@@ -19,6 +19,7 @@ public class TestcasesService {
     private final StoriesRepository storiesRepository;
     private final TasksRepository tasksRepository;
     private final UsersRepository usersRepository;
+    private final TestSuitesRepository testSuitesRepository;
 
 
     @Autowired
@@ -27,13 +28,15 @@ public class TestcasesService {
                             EpicsRepository epicsRepository,
                             StoriesRepository storiesRepository,
                             TasksRepository tasksRepository,
-                            UsersRepository usersRepository) {
+                            UsersRepository usersRepository,
+                            TestSuitesRepository testSuitesRepository) {
         this.testcasesRepository = testcasesRepository;
         this.projectsRepository = projectsRepository;
         this.epicsRepository = epicsRepository;
         this.storiesRepository = storiesRepository;
         this.tasksRepository = tasksRepository;
         this.usersRepository = usersRepository;
+        this.testSuitesRepository = testSuitesRepository;
     }
 
     @Transactional(readOnly = true)
@@ -134,6 +137,21 @@ public class TestcasesService {
                                                         + testcase.getEpic().getId()
                                         )
                                 )
+                );
+            }
+
+            if (testcase.getTestSuite() != null
+                    && testcase.getTestSuite().getId() != null) {
+
+                testcase.setTestSuite(
+                        testSuitesRepository.findById(
+                                testcase.getTestSuite().getId()
+                        ).orElseThrow(() ->
+                                new RuntimeException(
+                                        "Test Suite not found: "
+                                                + testcase.getTestSuite().getId()
+                                )
+                        )
                 );
             }
 

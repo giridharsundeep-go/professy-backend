@@ -56,6 +56,19 @@ public class Testcases {
     private Epics epic;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "test_suite_id")
+    @JsonIgnoreProperties({
+            "testcases",
+            "testPlan",
+            "project",
+            "user",
+            "creator",
+            "hibernateLazyInitializer",
+            "handler"
+    })
+    private TestSuites testSuite;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "story_id")
     @JsonIgnoreProperties({"assignee", "creator", "reporter", "project", "epic", "testcases", "hibernateLazyInitializer", "handler"})
     private Stories story;
@@ -122,6 +135,9 @@ public class Testcases {
 
     public Epics getEpic() { return epic; }
     public void setEpic(Epics epic) { this.epic = epic; }
+
+    public TestSuites getTestSuite() { return testSuite;}
+    public void setTestSuite(TestSuites testSuite) {this.testSuite = testSuite;}
 
     public Stories getStory() { return story; }
     public void setStory(Stories story) { this.story = story; }
