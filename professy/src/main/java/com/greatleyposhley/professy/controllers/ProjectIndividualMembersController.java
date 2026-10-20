@@ -1,5 +1,6 @@
 package com.greatleyposhley.professy.controllers;
 
+import com.greatleyposhley.professy.components.OrgComponent;
 import com.greatleyposhley.professy.services.ProjectIndividualMembersService;
 import com.greatleyposhley.professy.services.ProjectsService;
 import java.util.List;
@@ -20,9 +21,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class ProjectIndividualMembersController {
 
     private final ProjectIndividualMembersService service;
+    private final OrgComponent orgComponent;
 
-    public ProjectIndividualMembersController(ProjectIndividualMembersService service) {
+    public ProjectIndividualMembersController(ProjectIndividualMembersService service, OrgComponent orgComponent) {
         this.service = service;
+        this.orgComponent = orgComponent;
     }
 
     @PostMapping("/sync")
@@ -31,11 +34,12 @@ public class ProjectIndividualMembersController {
             Authentication authentication
     ) {
         try {
+            Long orgId = orgComponent.getOrgId(authentication);
             Long projectId = readLong(payload, "project_id");
             List<Long> userAccountIds = readIdList(payload, "user_account_ids");
 
             return success(
-                    service.syncIndividuals(projectId, userAccountIds, authentication.getName()),
+                    service.syncIndividuals(orgId, projectId, userAccountIds, authentication.getName()),
                     "Project individual member allocations synchronized successfully",
                     HttpStatus.OK
             );
@@ -54,8 +58,9 @@ public class ProjectIndividualMembersController {
             Authentication authentication
     ) {
         try {
+            Long orgId = orgComponent.getOrgId(authentication);
             return success(
-                    service.getIndividualsByProject(projectId, authentication.getName()),
+                    service.getIndividualsByProject(orgId, projectId, authentication.getName()),
                     "Project individual members fetched successfully",
                     HttpStatus.OK
             );
@@ -75,8 +80,9 @@ public class ProjectIndividualMembersController {
             Authentication authentication
     ) {
         try {
+            Long orgId = orgComponent.getOrgId(authentication);
             return success(
-                    service.removeIndividual(projectId, userAccountId, authentication.getName()),
+                    service.removeIndividual(orgId, projectId, userAccountId, authentication.getName()),
                     "Individual specialist removed from project successfully",
                     HttpStatus.OK
             );

@@ -41,20 +41,19 @@ public class TeamsService {
     // ============================================================
 
     @Transactional
-    public Map<String, Object> createTeam(
-            String name,
-            String description,
-            List<Long> memberIds,
-            String userEmail) {
+    public Map<String, Object> createTeam(Long orgId, String name,
+                                          String description,
+                                          List<Long> memberIds,
+                                          String userEmail) {
 
         UserAccount userAccount =
-                getUserAccount(userEmail);
+                getUserAccount(orgId, userEmail);
 
         validateName(name);
 
         String teamName = name.trim();
 
-        if (teamsRepository.existsByNameAndUserAccountId(
+        if (teamsRepository.existsByOrgIdAndNameAndUserAccountId(orgId,
                 teamName,
                 userAccount.getId())) {
 
@@ -69,6 +68,7 @@ public class TeamsService {
 
         Teams team = new Teams();
 
+        team.setOrgId(orgId);
         team.setUserAccount(userAccount);
         team.setName(teamName);
         team.setDescription(
@@ -84,7 +84,7 @@ public class TeamsService {
         // 2. CREATE TEAM MEMBERS
         // --------------------------------------------------------
 
-        saveTeamMembers(
+        saveTeamMembers(orgId,
                 savedTeam,
                 memberIds
         );
@@ -93,7 +93,7 @@ public class TeamsService {
         // 3. RETURN TEAM + USERS
         // --------------------------------------------------------
 
-        return buildTeamResponse(
+        return buildTeamResponse(orgId,
                 savedTeam
         );
     }
@@ -107,14 +107,13 @@ public class TeamsService {
     //   └── members: List<Users>
     // ============================================================
 
-    public List<Map<String, Object>> getAllTeams(
-            String userEmail) {
+    public List<Map<String, Object>> getAllTeams(Long orgId, String userEmail) {
 
         UserAccount userAccount =
-                getUserAccount(userEmail);
+                getUserAccount(orgId, userEmail);
 
         List<Teams> teams =
-                teamsRepository.findAllByUserAccountId(
+                teamsRepository.findAllByOrgIdAndUserAccountId(orgId,
                         userAccount.getId()
                 );
 
@@ -124,7 +123,7 @@ public class TeamsService {
         for (Teams team : teams) {
 
             result.add(
-                    buildTeamResponse(team)
+                    buildTeamResponse(orgId, team)
             );
         }
 
@@ -135,17 +134,16 @@ public class TeamsService {
     // GET ONE TEAM
     // ============================================================
 
-    public Map<String, Object> getTeam(
-            Long teamId,
-            String userEmail) {
+    public Map<String, Object> getTeam(Long orgId, Long teamId,
+                                       String userEmail) {
 
         Teams team =
-                getOwnedTeam(
+                getOwnedTeam(orgId,
                         teamId,
                         userEmail
                 );
 
-        return buildTeamResponse(team);
+        return buildTeamResponse(orgId, team);
     }
 
     // ============================================================
@@ -155,15 +153,14 @@ public class TeamsService {
     // ============================================================
 
     @Transactional
-    public Map<String, Object> updateTeam(
-            Long teamId,
-            String name,
-            String description,
-            List<Long> memberIds,
-            String userEmail) {
+    public Map<String, Object> updateTeam(Long orgId, Long teamId,
+                                          String name,
+                                          String description,
+                                          List<Long> memberIds,
+                                          String userEmail) {
 
         Teams team =
-                getOwnedTeam(
+                getOwnedTeam(orgId,
                         teamId,
                         userEmail
                 );
@@ -177,7 +174,7 @@ public class TeamsService {
         // --------------------------------------------------------
 
         if (!team.getName().equalsIgnoreCase(teamName)
-                && teamsRepository.existsByNameAndUserAccountId(
+                && teamsRepository.existsByOrgIdAndNameAndUserAccountId(orgId,
                 teamName,
                 team.getUserAccount().getId())) {
 
@@ -211,7 +208,7 @@ public class TeamsService {
                 teamId
         );
 
-        saveTeamMembers(
+        saveTeamMembers(orgId,
                 updatedTeam,
                 memberIds
         );
@@ -220,7 +217,7 @@ public class TeamsService {
         // 3. RETURN UPDATED TEAM + MEMBERS
         // --------------------------------------------------------
 
-        return buildTeamResponse(
+        return buildTeamResponse(orgId,
                 updatedTeam
         );
     }
@@ -232,12 +229,11 @@ public class TeamsService {
     // ============================================================
 
     @Transactional
-    public void deleteTeam(
-            Long teamId,
-            String userEmail) {
+    public void deleteTeam(Long orgId, Long teamId,
+                           String userEmail) {
 
         Teams team =
-                getOwnedTeam(
+                getOwnedTeam(orgId,
                         teamId,
                         userEmail
                 );
@@ -253,9 +249,9 @@ public class TeamsService {
     // SAVE TEAM MEMBERS
     // ============================================================
 
-    private void saveTeamMembers(
-            Teams team,
-            List<Long> memberIds) {
+    private void saveTeamMembers(Long orgId,
+                                 Teams team,
+                                 List<Long> memberIds) {
 
         if (memberIds == null ||
                 memberIds.isEmpty()) {
@@ -300,8 +296,8 @@ public class TeamsService {
     // BUILD TEAM RESPONSE
     // ============================================================
 
-    private Map<String, Object> buildTeamResponse(
-            Teams team) {
+    private Map<String, Object> buildTeamResponse(Long orgId,
+                                                  Teams team) {
 
         Map<String, Object> response =
                 new LinkedHashMap<>();
@@ -401,6 +397,7 @@ public class TeamsService {
     // ============================================================
 
     private UserAccount getUserAccount(
+            Long orgId,
             String userEmail) {
 
         if (userEmail == null ||
@@ -412,7 +409,7 @@ public class TeamsService {
         }
 
         return userAccountRepository
-                .findByEmail(
+                .findByOrgIdAndEmail(orgId,
                         userEmail.trim().toLowerCase()
                 )
                 .orElseThrow(() ->
@@ -427,14 +424,15 @@ public class TeamsService {
     // ============================================================
 
     private Teams getOwnedTeam(
+            Long orgId,
             Long teamId,
             String userEmail) {
 
         UserAccount userAccount =
-                getUserAccount(userEmail);
+                getUserAccount(orgId, userEmail);
 
         return teamsRepository
-                .findByIdAndUserAccountId(
+                .findByIdAndOrgIdAndUserAccountId(orgId,
                         teamId,
                         userAccount.getId()
                 )

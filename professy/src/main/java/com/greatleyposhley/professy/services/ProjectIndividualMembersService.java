@@ -29,12 +29,12 @@ public class ProjectIndividualMembersService {
     }
 
     @Transactional
-    public Map<String, Object> syncIndividuals(
+    public Map<String, Object> syncIndividuals(Long orgId,
             Long projectId,
             List<Long> userAccountIds,
             String userEmail
     ) {
-        validateProject(projectId);
+        validateProject(orgId, projectId);
         Long trackingUserId = getUserId(userEmail);
 
         List<Long> safeIds = userAccountIds == null ? List.of() : userAccountIds.stream()
@@ -59,11 +59,11 @@ public class ProjectIndividualMembersService {
     }
 
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> getIndividualsByProject(
+    public List<Map<String, Object>> getIndividualsByProject(long orgId,
             Long projectId,
             String userEmail
     ) {
-        validateProject(projectId);
+        validateProject(orgId, projectId);
         getUserId(userEmail);
 
         List<Long> ids = repository.findUserAccountIdsByProjectId(projectId);
@@ -87,12 +87,12 @@ public class ProjectIndividualMembersService {
     }
 
     @Transactional
-    public Map<String, Object> removeIndividual(
+    public Map<String, Object> removeIndividual(long orgId,
             Long projectId,
             Long userAccountId,
             String userEmail
     ) {
-        validateProject(projectId);
+        validateProject(orgId, projectId);
         getUserId(userEmail);
 
         int deleted = repository.removeProjectIndividual(projectId, userAccountId);
@@ -114,11 +114,11 @@ public class ProjectIndividualMembersService {
         return full.isEmpty() ? user.getEmail() : full;
     }
 
-    private void validateProject(Long projectId) {
+    private void validateProject(Long orgId, Long projectId) {
         if (projectId == null || projectId <= 0) {
             throw new IllegalArgumentException("project_id is required");
         }
-        if (projectsRepository.findProjectRowById(projectId) == null) {
+        if (projectsRepository.findProjectRowById(orgId, projectId) == null) {
             throw new ProjectsService.ResourceNotFoundException("Project not found");
         }
     }

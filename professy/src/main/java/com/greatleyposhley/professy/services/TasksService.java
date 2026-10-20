@@ -39,12 +39,12 @@ public class TasksService {
     }
 
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> getTasks(Long sprintId,
+    public List<Map<String, Object>> getTasks(Long orgId, Long sprintId,
                                               Long storyId,
                                               Long epicId,
                                               String status,
                                               String userEmail) {
-        getUserAccount(userEmail);
+        getUserAccount(orgId, userEmail);
 
         /*
          * Preserves the supplied Flask behavior:
@@ -52,8 +52,8 @@ public class TasksService {
          */
         List<Tasks> tasks =
                 sprintId != null
-                        ? tasksRepository.findAllBySprint_IdOrderByCreatedAtAsc(sprintId)
-                        : tasksRepository.findAllByOrderByCreatedAtAsc();
+                        ? tasksRepository.findAllByOrgIdAndSprint_IdOrderByCreatedAtAsc(orgId, sprintId)
+                        : tasksRepository.findAllByOrgIdOrderByCreatedAtAsc(orgId);
 
         List<Map<String, Object>> result = new ArrayList<>();
         for (Tasks task : tasks) {
@@ -63,9 +63,9 @@ public class TasksService {
     }
 
     @Transactional
-    public Map<String, Object> createTask(Map<String, Object> payload,
+    public Map<String, Object> createTask(Long orgId, Map<String, Object> payload,
                                           String userEmail) {
-        UserAccount userAccount = getUserAccount(userEmail);
+        UserAccount userAccount = getUserAccount(orgId, userEmail);
 
         Long storyId = readLong(payload, "story_id");
         Long sprintId = readLong(payload, "sprint_id");
@@ -86,22 +86,23 @@ public class TasksService {
         Stories story = storiesRepository.findById(storyId)
                 .orElseThrow(() -> new IllegalArgumentException("Story not found"));
 
-        Sprints sprint = getOptionalSprint(sprintId);
+        Sprints sprint = getOptionalSprint(orgId, sprintId);
 
         Long effectiveCreatorId =
                 creatorUserId != null
                         ? creatorUserId
                         : userAccount.getId();
 
-        Users creator = getUser(effectiveCreatorId);
-        Users assignee = getOptionalUser(assigneeUserId);
-        Users reporter = getOptionalUser(reporterUserId);
+        Users creator = getUser(orgId, effectiveCreatorId);
+        Users assignee = getOptionalUser(orgId, assigneeUserId);
+        Users reporter = getOptionalUser(orgId, reporterUserId);
 
         if (status == null || status.isBlank()) {
             status = "TODO";
         }
 
         Tasks task = new Tasks();
+        task.setOrgId(orgId);
         task.setStory(story);
         task.setSprint(sprint);
         task.setUser(userAccount);
@@ -126,26 +127,51 @@ public class TasksService {
         return result;
     }
 
-    @Transactional(readOnly = true)
-    public List<Map<String, Object>> getTasksByStory(Long storyId,
+    @Transactional
+    public List<Map<String, Object>> bulkCreateTasks(Long orgId, List<Map<String, Object>> payloads,
                                                      String userEmail) {
-        getUserAccount(userEmail);
+
+        if (payloads == null || payloads.isEmpty()) {
+            throw new IllegalArgumentException("At least one task is required");
+        }
+
+        List<Map<String, Object>> results = new ArrayList<>();
+
+        for (int i = 0; i < payloads.size(); i++) {
+            Map<String, Object> payload = payloads.get(i);
+
+            if (payload == null) {
+                throw new IllegalArgumentException(
+                        "Task at index " + i + " must not be null"
+                );
+            }
+
+            results.add(createTask(orgId, payload, userEmail));
+        }
+
+        return results;
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getTasksByStory(Long orgId, Long storyId,
+                                                     String userEmail) {
+        getUserAccount(orgId, userEmail);
 
         if (storyId == null || storyId <= 0) {
             throw new IllegalArgumentException("Invalid story id");
         }
 
         List<Map<String, Object>> result = new ArrayList<>();
-        for (Tasks task : tasksRepository.findAllByStory_IdOrderByCreatedAtAsc(storyId)) {
+        for (Tasks task : tasksRepository.findAllByOrgIdAndStory_IdOrderByCreatedAtAsc(orgId, storyId)) {
             result.add(toResponse(task));
         }
         return result;
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> getTaskById(Long taskId,
+    public Map<String, Object> getTaskById(Long orgId, Long taskId,
                                            String userEmail) {
-        getUserAccount(userEmail);
+        getUserAccount(orgId, userEmail);
 
         Tasks task = tasksRepository.findById(taskId)
                 .orElseThrow(() -> new IllegalArgumentException("Task not found"));
@@ -154,10 +180,10 @@ public class TasksService {
     }
 
     @Transactional
-    public Map<String, Object> updateTask(Long taskId,
+    public Map<String, Object> updateTask(Long orgId, Long taskId,
                                           Map<String, Object> payload,
                                           String userEmail) {
-        getUserAccount(userEmail);
+        getUserAccount(orgId, userEmail);
 
         Tasks task = tasksRepository.findById(taskId)
                 .orElseThrow(
@@ -182,10 +208,10 @@ public class TasksService {
 
         task.setTitle(title.trim());
         task.setDescription(description);
-        task.setSprint(getOptionalSprint(sprintId));
+        task.setSprint(getOptionalSprint(orgId, sprintId));
         task.setStatus(status.trim());
-        task.setAssignee(getOptionalUser(assigneeUserId));
-        task.setReporter(getOptionalUser(reporterUserId));
+        task.setAssignee(getOptionalUser(orgId, assigneeUserId));
+        task.setReporter(getOptionalUser(orgId, reporterUserId));
 
         Tasks saved = tasksRepository.save(task);
 
@@ -205,9 +231,9 @@ public class TasksService {
     }
 
     @Transactional
-    public Map<String, Object> deleteTask(Long taskId,
+    public Map<String, Object> deleteTask(Long orgId, Long taskId,
                                           String userEmail) {
-        getUserAccount(userEmail);
+        getUserAccount(orgId, userEmail);
 
         if (!tasksRepository.existsById(taskId)) {
             throw new IllegalArgumentException("Task not found");
@@ -256,7 +282,7 @@ public class TasksService {
         return result;
     }
 
-    private Sprints getOptionalSprint(Long sprintId) {
+    private Sprints getOptionalSprint(Long orgId, Long sprintId) {
         if (sprintId == null) {
             return null;
         }
@@ -269,11 +295,11 @@ public class TasksService {
                 .orElseThrow(() -> new IllegalArgumentException("Sprint not found"));
     }
 
-    private Users getOptionalUser(Long userId) {
-        return userId == null ? null : getUser(userId);
+    private Users getOptionalUser(Long orgId, Long userId) {
+        return userId == null ? null : getUser(orgId, userId);
     }
 
-    private Users getUser(Long userId) {
+    private Users getUser(Long orgId, Long userId) {
         if (userId == null || userId <= 0) {
             throw new IllegalArgumentException("Invalid user id");
         }
@@ -282,12 +308,12 @@ public class TasksService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
     }
 
-    private UserAccount getUserAccount(String email) {
+    private UserAccount getUserAccount(Long orgId, String email) {
         if (email == null || email.isBlank()) {
             throw new IllegalArgumentException("Authenticated user email is required");
         }
 
-        return userAccountRepository.findByEmail(email.trim().toLowerCase())
+        return userAccountRepository.findByOrgIdAndEmail(orgId, email.trim().toLowerCase())
                 .orElseThrow(
                         () -> new IllegalArgumentException("Authenticated user not found")
                 );

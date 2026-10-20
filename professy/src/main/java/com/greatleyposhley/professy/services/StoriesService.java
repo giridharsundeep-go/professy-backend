@@ -44,9 +44,9 @@ public class StoriesService {
     }
 
     @Transactional
-    public Map<String, Object> createStory(Map<String, Object> payload,
+    public Map<String, Object> createStory(Long orgId, Map<String, Object> payload,
                                            String userEmail) {
-        UserAccount userAccount = getUserAccount(userEmail);
+        UserAccount userAccount = getUserAccount(orgId, userEmail);
 
         Long projectId = readLong(payload, "project_id");
         Long epicId = readLong(payload, "epic_id");
@@ -67,18 +67,18 @@ public class StoriesService {
             );
         }
 
-        Projects project = getProject(projectId);
+        Projects project = getProject(orgId, projectId);
 
         Long effectiveCreatorId =
                 creatorUserId != null
                         ? creatorUserId
                         : userAccount.getId();
 
-        Users creator = getUser(effectiveCreatorId);
-        Epics epic = getOptionalEpic(epicId);
-        Sprints sprint = getOptionalSprint(sprintId);
-        Users assignee = getOptionalUser(assigneeUserId);
-        Users reporter = getOptionalUser(reporterUserId);
+        Users creator = getUser(orgId, effectiveCreatorId);
+        Epics epic = getOptionalEpic(orgId, epicId);
+        Sprints sprint = getOptionalSprint(orgId, sprintId);
+        Users assignee = getOptionalUser(orgId, assigneeUserId);
+        Users reporter = getOptionalUser(orgId, reporterUserId);
 
         if (storyPoints == null) {
             storyPoints = 0;
@@ -93,6 +93,7 @@ public class StoriesService {
         }
 
         Stories story = new Stories();
+        story.setOrgId(orgId);
         story.setProject(project);
         story.setEpic(epic);
         story.setSprint(sprint);
@@ -119,23 +120,48 @@ public class StoriesService {
         return result;
     }
 
+    @Transactional
+    public List<Map<String, Object>> bulkCreateStories(Long orgId, List<Map<String, Object>> payloads,
+                                                       String userEmail) {
+
+        if (payloads == null || payloads.isEmpty()) {
+            throw new IllegalArgumentException("At least one story is required");
+        }
+
+        List<Map<String, Object>> results = new ArrayList<>();
+
+        for (int i = 0; i < payloads.size(); i++) {
+            Map<String, Object> payload = payloads.get(i);
+
+            if (payload == null) {
+                throw new IllegalArgumentException(
+                        "Story at index " + i + " must not be null"
+                );
+            }
+
+            results.add(createStory(orgId, payload, userEmail));
+        }
+
+        return results;
+    }
+
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> getStoriesByProject(Long projectId,
+    public List<Map<String, Object>> getStoriesByProject(Long orgId, Long projectId,
                                                          String userEmail) {
-        getUserAccount(userEmail);
-        getProject(projectId);
+        getUserAccount(orgId, userEmail);
+        getProject(orgId, projectId);
 
         List<Map<String, Object>> result = new ArrayList<>();
-        for (Stories story : storiesRepository.findAllByProject_IdOrderByCreatedAtAsc(projectId)) {
+        for (Stories story : storiesRepository.findAllByOrgIdAndProject_IdOrderByCreatedAtAsc(orgId, projectId)) {
             result.add(toResponse(story));
         }
         return result;
     }
 
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> getStoriesBySprint(Long sprintId,
+    public List<Map<String, Object>> getStoriesBySprint(Long orgId, Long sprintId,
                                                         String userEmail) {
-        getUserAccount(userEmail);
+        getUserAccount(orgId, userEmail);
 
         if (sprintId == null || sprintId <= 0) {
             throw new IllegalArgumentException("Invalid sprint id");
@@ -146,16 +172,16 @@ public class StoriesService {
         }
 
         List<Map<String, Object>> result = new ArrayList<>();
-        for (Stories story : storiesRepository.findAllBySprint_IdOrderByPriorityDescCreatedAtAsc(sprintId)) {
+        for (Stories story : storiesRepository.findAllByOrgIdAndSprint_IdOrderByPriorityDescCreatedAtAsc(orgId, sprintId)) {
             result.add(toResponse(story));
         }
         return result;
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> getStoryById(Long storyId,
+    public Map<String, Object> getStoryById(Long orgId, Long storyId,
                                             String userEmail) {
-        getUserAccount(userEmail);
+        getUserAccount(orgId, userEmail);
 
         Stories story = storiesRepository.findById(storyId)
                 .orElseThrow(() -> new IllegalArgumentException("Story not found"));
@@ -164,10 +190,10 @@ public class StoriesService {
     }
 
     @Transactional
-    public Map<String, Object> updateStory(Long storyId,
+    public Map<String, Object> updateStory(Long orgId, Long storyId,
                                            Map<String, Object> payload,
                                            String userEmail) {
-        getUserAccount(userEmail);
+        getUserAccount(orgId, userEmail);
 
         Stories story = storiesRepository.findById(storyId)
                 .orElseThrow(
@@ -203,10 +229,10 @@ public class StoriesService {
         story.setStoryPoints(storyPoints);
         story.setStatus(status.trim());
         story.setPriority(priority.trim());
-        story.setEpic(getOptionalEpic(epicId));
-        story.setSprint(getOptionalSprint(sprintId));
-        story.setAssignee(getOptionalUser(assigneeUserId));
-        story.setReporter(getOptionalUser(reporterUserId));
+        story.setEpic(getOptionalEpic(orgId, epicId));
+        story.setSprint(getOptionalSprint(orgId, sprintId));
+        story.setAssignee(getOptionalUser(orgId, assigneeUserId));
+        story.setReporter(getOptionalUser(orgId, reporterUserId));
 
         Stories saved = storiesRepository.save(story);
 
@@ -223,9 +249,9 @@ public class StoriesService {
     }
 
     @Transactional
-    public Map<String, Object> deleteStory(Long storyId,
+    public Map<String, Object> deleteStory(Long orgId, Long storyId,
                                            String userEmail) {
-        getUserAccount(userEmail);
+        getUserAccount(orgId, userEmail);
 
         if (!storiesRepository.existsById(storyId)) {
             throw new IllegalArgumentException("Story not found");
@@ -280,7 +306,7 @@ public class StoriesService {
         return result;
     }
 
-    private Projects getProject(Long projectId) {
+    private Projects getProject(Long orgId, Long projectId) {
         if (projectId == null || projectId <= 0) {
             throw new IllegalArgumentException("Invalid project_id");
         }
@@ -289,7 +315,7 @@ public class StoriesService {
                 .orElseThrow(() -> new IllegalArgumentException("Project not found"));
     }
 
-    private Epics getOptionalEpic(Long epicId) {
+    private Epics getOptionalEpic(Long orgId, Long epicId) {
         if (epicId == null) {
             return null;
         }
@@ -302,7 +328,7 @@ public class StoriesService {
                 .orElseThrow(() -> new IllegalArgumentException("Epic not found"));
     }
 
-    private Sprints getOptionalSprint(Long sprintId) {
+    private Sprints getOptionalSprint(Long orgId, Long sprintId) {
         if (sprintId == null) {
             return null;
         }
@@ -315,11 +341,11 @@ public class StoriesService {
                 .orElseThrow(() -> new IllegalArgumentException("Sprint not found"));
     }
 
-    private Users getOptionalUser(Long userId) {
-        return userId == null ? null : getUser(userId);
+    private Users getOptionalUser(Long orgId, Long userId) {
+        return userId == null ? null : getUser(orgId, userId);
     }
 
-    private Users getUser(Long userId) {
+    private Users getUser(Long orgId, Long userId) {
         if (userId == null || userId <= 0) {
             throw new IllegalArgumentException("Invalid user id");
         }
@@ -328,12 +354,12 @@ public class StoriesService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
     }
 
-    private UserAccount getUserAccount(String email) {
+    private UserAccount getUserAccount(Long orgId, String email) {
         if (email == null || email.isBlank()) {
             throw new IllegalArgumentException("Authenticated user email is required");
         }
 
-        return userAccountRepository.findByEmail(email.trim().toLowerCase())
+        return userAccountRepository.findByOrgIdAndEmail(orgId, email.trim().toLowerCase())
                 .orElseThrow(
                         () -> new IllegalArgumentException("Authenticated user not found")
                 );

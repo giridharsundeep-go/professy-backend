@@ -1,6 +1,7 @@
 package com.greatleyposhley.professy.controllers;
 
 import com.greatleyposhley.professy.services.TasksService;
+import com.greatleyposhley.professy.repositories.UserAccountRepository;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,8 +15,11 @@ import org.springframework.web.bind.annotation.*;
 public class TasksController {
 
     private final TasksService tasksService;
+    private final UserAccountRepository userAccountRepository;
 
-    public TasksController(TasksService tasksService) {
+    public TasksController(TasksService tasksService,
+                           UserAccountRepository userAccountRepository) {
+        this.userAccountRepository = userAccountRepository;
         this.tasksService = tasksService;
     }
 
@@ -29,6 +33,7 @@ public class TasksController {
             @RequestParam(value = "epicId", required = false) Long epicIdAlias,
             @RequestParam(value = "status", required = false) String status,
             Authentication authentication) {
+        Long orgId = getOrgId(authentication);
         try {
             Long resolvedSprintId =
                     sprintId != null ? sprintId : sprintIdAlias;
@@ -41,6 +46,7 @@ public class TasksController {
 
             List<Map<String, Object>> data =
                     tasksService.getTasks(
+                            orgId,
                             resolvedSprintId,
                             resolvedStoryId,
                             resolvedEpicId,
@@ -62,9 +68,11 @@ public class TasksController {
     public ResponseEntity<Map<String, Object>> createTask(
             @RequestBody Map<String, Object> payload,
             Authentication authentication) {
+        Long orgId = getOrgId(authentication);
         try {
             Map<String, Object> data =
                     tasksService.createTask(
+                            orgId,
                             payload,
                             authentication.getName()
                     );
@@ -81,13 +89,40 @@ public class TasksController {
         }
     }
 
+    @PostMapping("/tasks/bulk-create")
+    public ResponseEntity<Map<String, Object>> bulkCreateTasks(
+            @RequestBody List<Map<String, Object>> payloads,
+            Authentication authentication) {
+        Long orgId = getOrgId(authentication);
+        try {
+            List<Map<String, Object>> data =
+                    tasksService.bulkCreateTasks(
+                            orgId,
+                            payloads,
+                            authentication.getName()
+                    );
+
+            return success(
+                    data,
+                    "Tasks created successfully",
+                    HttpStatus.CREATED
+            );
+        } catch (IllegalArgumentException ex) {
+            return error(ex.getMessage(), HttpStatus.BAD_REQUEST);
+        } catch (Exception ex) {
+            return error(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
     @GetMapping("/stories/{storyId}/tasks")
     public ResponseEntity<Map<String, Object>> getStoryTasks(
             @PathVariable Long storyId,
             Authentication authentication) {
+        Long orgId = getOrgId(authentication);
         try {
             List<Map<String, Object>> data =
                     tasksService.getTasksByStory(
+                            orgId,
                             storyId,
                             authentication.getName()
                     );
@@ -106,9 +141,11 @@ public class TasksController {
     public ResponseEntity<Map<String, Object>> getTask(
             @PathVariable Long taskId,
             Authentication authentication) {
+        Long orgId = getOrgId(authentication);
         try {
             Map<String, Object> data =
                     tasksService.getTaskById(
+                            orgId,
                             taskId,
                             authentication.getName()
                     );
@@ -130,9 +167,11 @@ public class TasksController {
             @PathVariable Long taskId,
             @RequestBody Map<String, Object> payload,
             Authentication authentication) {
+        Long orgId = getOrgId(authentication);
         try {
             Map<String, Object> data =
                     tasksService.updateTask(
+                            orgId,
                             taskId,
                             payload,
                             authentication.getName()
@@ -160,9 +199,11 @@ public class TasksController {
     public ResponseEntity<Map<String, Object>> deleteTask(
             @PathVariable Long taskId,
             Authentication authentication) {
+        Long orgId = getOrgId(authentication);
         try {
             Map<String, Object> data =
                     tasksService.deleteTask(
+                            orgId,
                             taskId,
                             authentication.getName()
                     );
@@ -209,5 +250,25 @@ public class TasksController {
         return ResponseEntity
                 .status(status)
                 .body(response);
+    }
+
+
+    private Long getOrgId(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new IllegalArgumentException("Authentication required");
+        }
+
+        String email = authentication.getName();
+
+        if (email == null || email.trim().isEmpty()) {
+            throw new IllegalArgumentException("Authenticated user is required");
+        }
+
+        return userAccountRepository
+                .findByEmail(email.trim().toLowerCase())
+                .map(account -> account.getOrgId())
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Authenticated user not found")
+                );
     }
 }

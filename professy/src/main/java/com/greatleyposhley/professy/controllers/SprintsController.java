@@ -1,6 +1,7 @@
 package com.greatleyposhley.professy.controllers;
 
 import com.greatleyposhley.professy.services.SprintsService;
+import com.greatleyposhley.professy.repositories.UserAccountRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -15,10 +16,12 @@ import java.util.Map;
 public class SprintsController {
 
     private final SprintsService sprintsService;
+    private final UserAccountRepository userAccountRepository;
 
     public SprintsController(
-            SprintsService sprintsService
-    ) {
+            SprintsService sprintsService,
+            UserAccountRepository userAccountRepository) {
+        this.userAccountRepository = userAccountRepository;
         this.sprintsService = sprintsService;
     }
 
@@ -46,6 +49,8 @@ public class SprintsController {
 
         try {
 
+            Long orgId = getOrgId(authentication);
+
             requireAuthentication(
                     authentication
             );
@@ -59,10 +64,13 @@ public class SprintsController {
                     resolvedProjectId != null
                             ? sprintsService
                             .getSprintsByProjectId(
+                                    orgId,
                                     resolvedProjectId
                             )
                             : sprintsService
-                            .getAllSprints();
+                            .getAllSprints(
+                                    orgId
+                            );
 
             return success(
                     data,
@@ -96,6 +104,7 @@ public class SprintsController {
             @RequestBody Map<String, Object> payload,
             Authentication authentication
     ) {
+        Long orgId = getOrgId(authentication);
 
         try {
 
@@ -106,6 +115,7 @@ public class SprintsController {
 
             Map<String, Object> data =
                     sprintsService.createSprint(
+                            orgId,
                             payload,
                             email
                     );
@@ -142,6 +152,7 @@ public class SprintsController {
             @PathVariable Long sprintId,
             Authentication authentication
     ) {
+        Long orgId = getOrgId(authentication);
 
         try {
 
@@ -151,6 +162,7 @@ public class SprintsController {
 
             Map<String, Object> data =
                     sprintsService.getSprintById(
+                            orgId,
                             sprintId
                     );
 
@@ -196,6 +208,7 @@ public class SprintsController {
             @RequestBody Map<String, Object> payload,
             Authentication authentication
     ) {
+        Long orgId = getOrgId(authentication);
 
         try {
 
@@ -205,6 +218,7 @@ public class SprintsController {
 
             Map<String, Object> data =
                     sprintsService.updateSprint(
+                            orgId,
                             sprintId,
                             payload
                     );
@@ -250,6 +264,7 @@ public class SprintsController {
             @PathVariable Long sprintId,
             Authentication authentication
     ) {
+        Long orgId = getOrgId(authentication);
 
         try {
 
@@ -259,6 +274,7 @@ public class SprintsController {
 
             Map<String, Object> data =
                     sprintsService.deleteSprint(
+                            orgId,
                             sprintId
                     );
 
@@ -385,5 +401,25 @@ public class SprintsController {
         return ResponseEntity
                 .status(status)
                 .body(response);
+    }
+
+
+    private Long getOrgId(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new IllegalArgumentException("Authentication required");
+        }
+
+        String email = authentication.getName();
+
+        if (email == null || email.trim().isEmpty()) {
+            throw new IllegalArgumentException("Authenticated user is required");
+        }
+
+        return userAccountRepository
+                .findByEmail(email.trim().toLowerCase())
+                .map(account -> account.getOrgId())
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Authenticated user not found")
+                );
     }
 }

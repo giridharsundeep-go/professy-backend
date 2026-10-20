@@ -24,7 +24,7 @@ public class TestPlansService {
     // GET ALL
     // ============================================================
 
-    public List<TestPlans> getAllTestPlans() {
+    public List<TestPlans> getAllTestPlans(Long orgId) {
         return testPlansRepository.findAll();
     }
 
@@ -33,7 +33,7 @@ public class TestPlansService {
     // GET BY ID
     // ============================================================
 
-    public TestPlans getTestPlanById(Long id) {
+    public TestPlans getTestPlanById(Long orgId, Long id) {
 
         return testPlansRepository.findById(id)
                 .orElseThrow(() ->
@@ -48,11 +48,9 @@ public class TestPlansService {
     // GET BY PROJECT
     // ============================================================
 
-    public List<TestPlans> getTestPlansByProjectId(
-            Long projectId
-    ) {
+    public List<TestPlans> getTestPlansByProjectId(Long orgId, Long projectId) {
 
-        return testPlansRepository.findByProjectId(projectId);
+        return testPlansRepository.findByOrgIdAndProjectId(orgId, projectId);
     }
 
 
@@ -60,7 +58,11 @@ public class TestPlansService {
     // CREATE / UPDATE
     // ============================================================
 
-    public TestPlans saveTestPlan(TestPlans testPlan) {
+    public TestPlans saveTestPlan(Long orgId, TestPlans testPlan) {
+        if (testPlan == null) {
+            throw new IllegalArgumentException("Test plan is required");
+        }
+        testPlan.setOrgId(orgId);
 
         return testPlansRepository.save(testPlan);
     }
@@ -70,7 +72,7 @@ public class TestPlansService {
     // DELETE
     // ============================================================
 
-    public void deleteTestPlan(Long id) {
+    public void deleteTestPlan(Long orgId, Long id) {
 
         if (!testPlansRepository.existsById(id)) {
 

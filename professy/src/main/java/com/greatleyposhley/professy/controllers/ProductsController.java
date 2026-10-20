@@ -1,6 +1,7 @@
 package com.greatleyposhley.professy.controllers;
 
 import com.greatleyposhley.professy.services.ProductsService;
+import com.greatleyposhley.professy.repositories.UserAccountRepository;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,10 +22,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class ProductsController {
 
     private final ProductsService productsService;
+    private final UserAccountRepository userAccountRepository;
 
     public ProductsController(
-            ProductsService productsService
-    ) {
+            ProductsService productsService,
+            UserAccountRepository userAccountRepository) {
+        this.userAccountRepository = userAccountRepository;
         this.productsService = productsService;
     }
 
@@ -33,6 +36,7 @@ public class ProductsController {
     getAllProducts(
             Authentication authentication
     ) {
+        Long orgId = getOrgId(authentication);
 
         try {
 
@@ -43,6 +47,7 @@ public class ProductsController {
 
             List<Map<String, Object>> products =
                     productsService.getAllProducts(
+                            orgId,
                             userEmail
                     );
 
@@ -74,6 +79,7 @@ public class ProductsController {
             @PathVariable Long productId,
             Authentication authentication
     ) {
+        Long orgId = getOrgId(authentication);
 
         try {
 
@@ -84,6 +90,7 @@ public class ProductsController {
 
             Map<String, Object> product =
                     productsService.getProductById(
+                            orgId,
                             productId,
                             userEmail
                     );
@@ -123,6 +130,7 @@ public class ProductsController {
             @RequestBody Map<String, Object> payload,
             Authentication authentication
     ) {
+        Long orgId = getOrgId(authentication);
 
         try {
 
@@ -133,6 +141,7 @@ public class ProductsController {
 
             Map<String, Object> product =
                     productsService.createProduct(
+                            orgId,
                             payload,
                             userEmail
                     );
@@ -166,6 +175,7 @@ public class ProductsController {
             @RequestBody Map<String, Object> payload,
             Authentication authentication
     ) {
+        Long orgId = getOrgId(authentication);
 
         try {
 
@@ -176,6 +186,7 @@ public class ProductsController {
 
             Map<String, Object> product =
                     productsService.updateProduct(
+                            orgId,
                             productId,
                             payload,
                             userEmail
@@ -216,6 +227,7 @@ public class ProductsController {
             @PathVariable Long productId,
             Authentication authentication
     ) {
+        Long orgId = getOrgId(authentication);
 
         try {
 
@@ -226,6 +238,7 @@ public class ProductsController {
 
             Map<String, Object> result =
                     productsService.deleteProduct(
+                            orgId,
                             productId,
                             userEmail
                     );
@@ -323,5 +336,25 @@ public class ProductsController {
         return ResponseEntity
                 .status(status)
                 .body(body);
+    }
+
+
+    private Long getOrgId(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new IllegalArgumentException("Authentication required");
+        }
+
+        String email = authentication.getName();
+
+        if (email == null || email.trim().isEmpty()) {
+            throw new IllegalArgumentException("Authenticated user is required");
+        }
+
+        return userAccountRepository
+                .findByEmail(email.trim().toLowerCase())
+                .map(account -> account.getOrgId())
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Authenticated user not found")
+                );
     }
 }

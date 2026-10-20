@@ -40,23 +40,24 @@ public class TestcasesService {
     }
 
     @Transactional(readOnly = true)
-    public List<Testcases> getAllTestcases() {
-        return testcasesRepository.findAll();
+    public List<Testcases> getAllTestcases(Long orgId) {
+        return testcasesRepository.findAllByOrgId(orgId);
     }
 
     @Transactional(readOnly = true)
-    public List<Testcases> getTestcasesByProjectId(Long projectId) {
-        return testcasesRepository.findByProjectId(projectId);
+    public List<Testcases> getTestcasesByProjectId(Long orgId, Long projectId) {
+        return testcasesRepository.findByOrgIdAndProjectId(orgId, projectId);
     }
 
     @Transactional(readOnly = true)
-    public Testcases getTestcaseById(Long id) {
-        return testcasesRepository.findById(id)
+    public Testcases getTestcaseById(Long orgId, Long id) {
+        return testcasesRepository.findByIdAndOrgId(orgId, id)
                 .orElseThrow(() -> new EntityNotFoundException("Test case not found with ID: " + id));
     }
 
     @Transactional
-    public Testcases saveTestcase(Testcases testcase) {
+    public Testcases saveTestcase(Long orgId, Testcases testcase) {
+        testcase.setOrgId(orgId);
 
         /*
          * ============================================================
@@ -390,8 +391,8 @@ public class TestcasesService {
     }
 
     @Transactional
-    public Optional<Testcases> updateTestCase(Long id, Testcases updatedTestCase) {
-        return testcasesRepository.findById(id).map(existingTestCase -> {
+    public Optional<Testcases> updateTestCase(Long orgId, Long id, Testcases updatedTestCase) {
+        return testcasesRepository.findByIdAndOrgId(orgId, id).map(existingTestCase -> {
 
             // Update basic text & enum fields
             existingTestCase.setTestCaseCode(updatedTestCase.getTestCaseCode());
@@ -456,7 +457,7 @@ public class TestcasesService {
     }
 
     @Transactional
-    public void deleteTestcase(Long id) {
+    public void deleteTestcase(Long orgId, Long id) {
         if (!testcasesRepository.existsById(id)) {
             throw new EntityNotFoundException("Test case not found with ID: " + id);
         }
@@ -464,11 +465,9 @@ public class TestcasesService {
     }
 
     @Transactional
-    public Testcases assignTestCase(
-            Long testCaseId,
-            String type,
-            Long itemId
-    ) {
+    public Testcases assignTestCase(Long orgId, Long testCaseId,
+                                    String type,
+                                    Long itemId) {
 
         Testcases testcase = testcasesRepository
                 .findById(testCaseId)
@@ -527,11 +526,9 @@ public class TestcasesService {
     }
 
     @Transactional
-    public Testcases unassignTestCase(
-            Long testCaseId,
-            String type,
-            Long itemId
-    ) {
+    public Testcases unassignTestCase(Long orgId, Long testCaseId,
+                                      String type,
+                                      Long itemId) {
 
         Testcases testcase = testcasesRepository
                 .findById(testCaseId)

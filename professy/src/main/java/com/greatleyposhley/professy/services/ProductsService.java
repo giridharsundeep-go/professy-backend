@@ -25,7 +25,7 @@ public class ProductsService {
         this.userAccountRepository = userAccountRepository;
     }
 
-    private UserAccount getUserAccount(String email) {
+    private UserAccount getUserAccount(Long orgId, String email) {
 
         if (email == null || email.trim().isEmpty()) {
             throw new IllegalArgumentException(
@@ -34,7 +34,7 @@ public class ProductsService {
         }
 
         return userAccountRepository
-                .findByEmail(email.trim().toLowerCase())
+                .findByOrgIdAndEmail(orgId, email.trim().toLowerCase())
                 .orElseThrow(() ->
                         new IllegalArgumentException(
                                 "Authenticated user not found"
@@ -83,13 +83,11 @@ public class ProductsService {
     }
 
     @Transactional
-    public Map<String, Object> createProduct(
-            Map<String, Object> payload,
-            String userEmail
-    ) {
+    public Map<String, Object> createProduct(Long orgId, Map<String, Object> payload,
+                                             String userEmail) {
 
         UserAccount userAccount =
-                getUserAccount(userEmail);
+                getUserAccount(orgId, userEmail);
 
         String name =
                 getRequiredName(payload);
@@ -97,7 +95,7 @@ public class ProductsService {
         String description =
                 getDescription(payload);
 
-        if (productsRepository.existsByNameAndUserAccount_Id(
+        if (productsRepository.existsByOrgIdAndNameAndUserAccount_Id(orgId,
                 name,
                 userAccount.getId()
         )) {
@@ -109,6 +107,7 @@ public class ProductsService {
         Products product =
                 new Products();
 
+        product.setOrgId(orgId);
         product.setUserAccount(userAccount);
         product.setName(name);
         product.setDescription(description);
@@ -120,16 +119,14 @@ public class ProductsService {
     }
 
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> getAllProducts(
-            String userEmail
-    ) {
+    public List<Map<String, Object>> getAllProducts(Long orgId, String userEmail) {
 
         UserAccount userAccount =
-                getUserAccount(userEmail);
+                getUserAccount(orgId, userEmail);
 
         List<Products> products =
                 productsRepository
-                        .findAllByUserAccount_Id(
+                        .findAllByOrgIdAndUserAccount_Id(orgId, 
                                 userAccount.getId()
                         );
 
@@ -144,20 +141,19 @@ public class ProductsService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> getProductById(
-            Long productId,
-            String userEmail
-    ) {
+    public Map<String, Object> getProductById(Long orgId, Long productId,
+                                              String userEmail) {
 
         validateId(productId);
 
         UserAccount userAccount =
-                getUserAccount(userEmail);
+                getUserAccount(orgId, userEmail);
 
         Products product =
                 productsRepository
-                        .findByIdAndUserAccount_Id(
+                        .findByIdAndOrgIdAndUserAccount_Id(
                                 productId,
+                                orgId,
                                 userAccount.getId()
                         )
                         .orElseThrow(() ->
@@ -170,16 +166,14 @@ public class ProductsService {
     }
 
     @Transactional
-    public Map<String, Object> updateProduct(
-            Long productId,
-            Map<String, Object> payload,
-            String userEmail
-    ) {
+    public Map<String, Object> updateProduct(Long orgId, Long productId,
+                                             Map<String, Object> payload,
+                                             String userEmail) {
 
         validateId(productId);
 
         UserAccount userAccount =
-                getUserAccount(userEmail);
+                getUserAccount(orgId, userEmail);
 
         String name =
                 getRequiredName(payload);
@@ -189,8 +183,9 @@ public class ProductsService {
 
         Products product =
                 productsRepository
-                        .findByIdAndUserAccount_Id(
+                        .findByIdAndOrgIdAndUserAccount_Id(
                                 productId,
+                                orgId,
                                 userAccount.getId()
                         )
                         .orElseThrow(() ->
@@ -205,7 +200,7 @@ public class ProductsService {
                 );
 
         if (nameChanged &&
-                productsRepository.existsByNameAndUserAccount_Id(
+                productsRepository.existsByOrgIdAndNameAndUserAccount_Id(orgId,
                         name,
                         userAccount.getId()
                 )) {
@@ -225,20 +220,19 @@ public class ProductsService {
     }
 
     @Transactional
-    public Map<String, Object> deleteProduct(
-            Long productId,
-            String userEmail
-    ) {
+    public Map<String, Object> deleteProduct(Long orgId, Long productId,
+                                             String userEmail) {
 
         validateId(productId);
 
         UserAccount userAccount =
-                getUserAccount(userEmail);
+                getUserAccount(orgId, userEmail);
 
         Products product =
                 productsRepository
-                        .findByIdAndUserAccount_Id(
+                        .findByIdAndOrgIdAndUserAccount_Id(
                                 productId,
+                                orgId,
                                 userAccount.getId()
                         )
                         .orElseThrow(() ->

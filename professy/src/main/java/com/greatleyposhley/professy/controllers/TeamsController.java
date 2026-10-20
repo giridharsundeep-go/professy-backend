@@ -1,6 +1,7 @@
 package com.greatleyposhley.professy.controllers;
 
 import com.greatleyposhley.professy.services.TeamsService;
+import com.greatleyposhley.professy.repositories.UserAccountRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -15,9 +16,12 @@ import java.util.Map;
 public class TeamsController {
 
     private final TeamsService teamsService;
+    private final UserAccountRepository userAccountRepository;
 
     public TeamsController(
-            TeamsService teamsService) {
+            TeamsService teamsService,
+            UserAccountRepository userAccountRepository) {
+        this.userAccountRepository = userAccountRepository;
 
         this.teamsService = teamsService;
     }
@@ -29,6 +33,7 @@ public class TeamsController {
     @GetMapping
     public ResponseEntity<Map<String, Object>> getAllTeams(
             Authentication authentication) {
+        Long orgId = getOrgId(authentication);
 
         try {
 
@@ -37,6 +42,7 @@ public class TeamsController {
 
             List<Map<String, Object>> teams =
                     teamsService.getAllTeams(
+                            orgId,
                             userEmail
                     );
 
@@ -63,6 +69,7 @@ public class TeamsController {
     public ResponseEntity<Map<String, Object>> getTeam(
             @PathVariable Long teamId,
             Authentication authentication) {
+        Long orgId = getOrgId(authentication);
 
         try {
 
@@ -71,6 +78,7 @@ public class TeamsController {
 
             Map<String, Object> team =
                     teamsService.getTeam(
+                            orgId,
                             teamId,
                             userEmail
                     );
@@ -106,6 +114,7 @@ public class TeamsController {
     public ResponseEntity<Map<String, Object>> createTeam(
             @RequestBody Map<String, Object> request,
             Authentication authentication) {
+        Long orgId = getOrgId(authentication);
 
         try {
 
@@ -129,6 +138,7 @@ public class TeamsController {
 
             Map<String, Object> team =
                     teamsService.createTeam(
+                            orgId,
                             name,
                             description,
                             memberIds,
@@ -167,6 +177,7 @@ public class TeamsController {
             @PathVariable Long teamId,
             @RequestBody Map<String, Object> request,
             Authentication authentication) {
+        Long orgId = getOrgId(authentication);
 
         try {
 
@@ -190,6 +201,7 @@ public class TeamsController {
 
             Map<String, Object> team =
                     teamsService.updateTeam(
+                            orgId,
                             teamId,
                             name,
                             description,
@@ -220,6 +232,7 @@ public class TeamsController {
     public ResponseEntity<Map<String, Object>> deleteTeam(
             @PathVariable Long teamId,
             Authentication authentication) {
+        Long orgId = getOrgId(authentication);
 
         try {
 
@@ -227,6 +240,7 @@ public class TeamsController {
                     authentication.getName();
 
             teamsService.deleteTeam(
+                    orgId,
                     teamId,
                     userEmail
             );
@@ -331,5 +345,25 @@ public class TeamsController {
         return ResponseEntity
                 .status(status)
                 .body(result);
+    }
+
+
+    private Long getOrgId(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new IllegalArgumentException("Authentication required");
+        }
+
+        String email = authentication.getName();
+
+        if (email == null || email.trim().isEmpty()) {
+            throw new IllegalArgumentException("Authenticated user is required");
+        }
+
+        return userAccountRepository
+                .findByEmail(email.trim().toLowerCase())
+                .map(account -> account.getOrgId())
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Authenticated user not found")
+                );
     }
 }

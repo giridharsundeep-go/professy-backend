@@ -15,6 +15,9 @@ public class TestSuites {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "org_id", nullable = false)
+    private Long orgId;
+
     @Column(name = "name", nullable = false)
     private String name;
 
@@ -92,4 +95,13 @@ public class TestSuites {
     public void setTestPlan(TestPlans testPlan) {
         this.testPlan = testPlan;
     }
+
+    public Long getOrgId() {
+        return orgId;
+    }
+
+    public void setOrgId(Long orgId) {
+        this.orgId = orgId;
+    }
+
 }

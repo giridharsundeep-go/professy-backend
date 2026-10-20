@@ -29,6 +29,9 @@ public class UserAccount {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "org_id", nullable = false)
+    private Long orgId;
+
     @Column(name = "first_name", nullable = false, length = 100)
     private String firstName;
 
@@ -65,10 +68,11 @@ public class UserAccount {
     }
 
     // All-Args Constructor
-    public UserAccount(Long id, String firstName, String lastName, String email, String phone,
+    public UserAccount(Long id, Long orgId, String firstName, String lastName, String email, String phone,
                        Gender gender, String password, LocalDateTime createdAt,
                        LocalDateTime updatedAt, Boolean isActive, LocalDateTime lastLogin) {
         this.id = id;
+        this.orgId = orgId;
         this.firstName = firstName;
         this.lastName = lastName;
         this.email = email;
@@ -107,6 +111,14 @@ public class UserAccount {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public Long getOrgId() {
+        return orgId;
+    }
+
+    public void setOrgId(Long orgId) {
+        this.orgId = orgId;
     }
 
     public String getFirstName() {
@@ -210,6 +222,7 @@ public class UserAccount {
     public String toString() {
         return "UserAccount{" +
                 "id=" + id +
+                ", orgId=" + orgId +
                 ", firstName='" + firstName + '\'' +
                 ", lastName='" + lastName + '\'' +
                 ", email='" + email + '\'' +

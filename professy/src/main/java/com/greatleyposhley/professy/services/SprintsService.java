@@ -35,10 +35,10 @@ public class SprintsService {
     // ============================================================
 
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> getAllSprints() {
+    public List<Map<String, Object>> getAllSprints(Long orgId) {
 
         List<Sprints> sprints =
-                sprintsRepository.findAllByOrderByIdAsc();
+                sprintsRepository.findAllByOrgIdOrderByIdAsc(orgId);
 
         List<Map<String, Object>> response = new ArrayList<>();
 
@@ -54,15 +54,13 @@ public class SprintsService {
     // ============================================================
 
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> getSprintsByProjectId(
-            Long projectId
-    ) {
+    public List<Map<String, Object>> getSprintsByProjectId(Long orgId, Long projectId) {
 
         validateId(projectId);
 
         List<Sprints> sprints =
                 sprintsRepository
-                        .findAllByProject_IdOrderBySprintNumberAsc(
+                        .findAllByOrgIdAndProject_IdOrderBySprintNumberAsc(orgId,
                                 projectId
                         );
 
@@ -81,9 +79,7 @@ public class SprintsService {
     // ============================================================
 
     @Transactional(readOnly = true)
-    public Map<String, Object> getSprintById(
-            Long sprintId
-    ) {
+    public Map<String, Object> getSprintById(Long orgId, Long sprintId) {
 
         validateId(sprintId);
 
@@ -104,10 +100,8 @@ public class SprintsService {
     // ============================================================
 
     @Transactional
-    public Map<String, Object> createSprint(
-            Map<String, Object> payload,
-            String userEmail
-    ) {
+    public Map<String, Object> createSprint(Long orgId, Map<String, Object> payload,
+                                            String userEmail) {
 
         if (payload == null) {
             throw new IllegalArgumentException(
@@ -141,7 +135,7 @@ public class SprintsService {
                         );
 
         UserAccount userAccount =
-                getAuthenticatedUser(userEmail);
+                getAuthenticatedUser(orgId, userEmail);
 
         Integer sprintNumber =
                 readInteger(
@@ -155,7 +149,7 @@ public class SprintsService {
         }
 
         if (sprintsRepository
-                .findByProject_IdAndSprintNumber(
+                .findByOrgIdAndProject_IdAndSprintNumber(orgId,
                         projectId,
                         sprintNumber
                 )
@@ -199,6 +193,7 @@ public class SprintsService {
         Sprints sprint =
                 new Sprints();
 
+        sprint.setOrgId(orgId);
         sprint.setProject(project);
         sprint.setUserAccount(userAccount);
         sprint.setSprintNumber(sprintNumber);
@@ -266,10 +261,8 @@ public class SprintsService {
     // ============================================================
 
     @Transactional
-    public Map<String, Object> updateSprint(
-            Long sprintId,
-            Map<String, Object> payload
-    ) {
+    public Map<String, Object> updateSprint(Long orgId, Long sprintId,
+                                            Map<String, Object> payload) {
 
         validateId(sprintId);
 
@@ -358,9 +351,7 @@ public class SprintsService {
     // ============================================================
 
     @Transactional
-    public Map<String, Object> deleteSprint(
-            Long sprintId
-    ) {
+    public Map<String, Object> deleteSprint(Long orgId, Long sprintId) {
 
         validateId(sprintId);
 
@@ -397,9 +388,7 @@ public class SprintsService {
     // ============================================================
 
     @Transactional
-    public int bulkInsertSprints(
-            List<Map<String, Object>> sprintList
-    ) {
+    public int bulkInsertSprints(Long orgId, List<Map<String, Object>> sprintList) {
 
         if (sprintList == null ||
                 sprintList.isEmpty()) {
@@ -457,6 +446,7 @@ public class SprintsService {
             Sprints sprint =
                     new Sprints();
 
+            sprint.setOrgId(orgId);
             sprint.setProject(project);
             sprint.setUserAccount(userAccount);
 
@@ -546,9 +536,7 @@ public class SprintsService {
     // ============================================================
 
     @Transactional
-    public int activateSprintManually(
-            Long sprintId
-    ) {
+    public int activateSprintManually(Long orgId, Long sprintId) {
 
         Sprints sprint =
                 sprintsRepository
@@ -574,9 +562,7 @@ public class SprintsService {
     // ============================================================
 
     @Transactional
-    public int completeSprintManually(
-            Long sprintId
-    ) {
+    public int completeSprintManually(Long orgId, Long sprintId) {
 
         Sprints sprint =
                 sprintsRepository
@@ -603,13 +589,11 @@ public class SprintsService {
 
     @Transactional(readOnly = true)
     public List<Map<String, Object>>
-    getAutomaticSprintsToActivate(
-            LocalDate checkDate
-    ) {
+    getAutomaticSprintsToActivate(Long orgId, LocalDate checkDate) {
 
         List<Sprints> sprints =
                 sprintsRepository
-                        .findAllByStatusAndActivationTypeAndScheduledStartDateLessThanEqual(
+                        .findAllByOrgIdAndStatusAndActivationTypeAndScheduledStartDateLessThanEqual(orgId,
                                 "PLANNED",
                                 "AUTOMATIC",
                                 checkDate
@@ -664,10 +648,8 @@ public class SprintsService {
     // ============================================================
 
     @Transactional
-    public int syncAndRecreatePlannedSprints(
-            Long projectId,
-            List<Map<String, Object>> sprintList
-    ) {
+    public int syncAndRecreatePlannedSprints(Long orgId, Long projectId,
+                                             List<Map<String, Object>> sprintList) {
 
         if (sprintList == null ||
                 sprintList.isEmpty()) {
@@ -729,7 +711,7 @@ public class SprintsService {
 
             Sprints sprint =
                     sprintsRepository
-                            .findByProject_IdAndSprintNumber(
+                            .findByOrgIdAndProject_IdAndSprintNumber(orgId,
                                     projectId,
                                     sprintNumber
                             )
@@ -812,7 +794,7 @@ public class SprintsService {
         // delete PLANNED records not present in incoming sprint numbers.
         List<Sprints> plannedSprints =
                 sprintsRepository
-                        .findAllByProject_IdAndStatus(
+                        .findAllByOrgIdAndProject_IdAndStatus(orgId,
                                 projectId,
                                 "PLANNED"
                         );
@@ -978,6 +960,7 @@ public class SprintsService {
     // ============================================================
 
     private UserAccount getAuthenticatedUser(
+            Long orgId,
             String email
     ) {
 
@@ -990,7 +973,7 @@ public class SprintsService {
         }
 
         return userAccountRepository
-                .findByEmail(
+                .findByOrgIdAndEmail(orgId,
                         email.trim().toLowerCase()
                 )
                 .orElseThrow(() ->

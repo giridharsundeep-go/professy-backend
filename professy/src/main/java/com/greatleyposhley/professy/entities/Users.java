@@ -33,6 +33,14 @@ public class Users {
     @NotFound(action = NotFoundAction.IGNORE)
     private UserAccount userAccount;
 
+    // Direct user_id value
+    @Column(name = "user_id", insertable = false, updatable = false)
+    private Long userId;
+
+    // Foreign Key to org table
+    @Column(name = "org_id", nullable = false)
+    private Long orgId;
+
     @Column(nullable = false)
     private String name;
 
@@ -113,6 +121,22 @@ public class Users {
 
     public void setUserAccount(UserAccount userAccount) {
         this.userAccount = userAccount;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+
+    public Long getOrgId() {
+        return orgId;
+    }
+
+    public void setOrgId(Long orgId) {
+        this.orgId = orgId;
     }
 
     public String getName() {

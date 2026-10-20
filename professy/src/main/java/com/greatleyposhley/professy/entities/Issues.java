@@ -20,6 +20,9 @@ public class Issues {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "org_id", nullable = false)
+    private Long orgId;
+
     @Column(name = "issue_code", nullable = false, unique = true, length = 50)
     private String issueCode;
 
@@ -199,4 +202,13 @@ public class Issues {
     public void setAllocations(List<IssueAllocations> allocations) {
         this.allocations = allocations;
     }
+
+    public Long getOrgId() {
+        return orgId;
+    }
+
+    public void setOrgId(Long orgId) {
+        this.orgId = orgId;
+    }
+
 }

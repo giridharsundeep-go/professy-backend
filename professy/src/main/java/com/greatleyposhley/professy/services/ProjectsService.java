@@ -45,24 +45,24 @@ public class ProjectsService {
     }
 
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> getProjects(String userEmail) {
-        Long userId = getUserId(userEmail);
-        return copyRows(projectsRepository.findProjectRowsByUserId(userId));
+    public List<Map<String, Object>> getProjects(Long orgId, String userEmail) {
+        Long userId = getUserId(orgId, userEmail);
+        return copyRows(projectsRepository.findProjectRowsByUserId(orgId, userId));
     }
 
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> getProjectsByProduct(Long productId, String userEmail) {
+    public List<Map<String, Object>> getProjectsByProduct(Long orgId, Long productId, String userEmail) {
         requireId(productId, "product_id");
-        getUserId(userEmail);
-        return copyRows(projectsRepository.findProjectRowsByProductId(productId));
+        getUserId(orgId, userEmail);
+        return copyRows(projectsRepository.findProjectRowsByProductId(orgId, productId));
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> getProjectById(Long projectId, String userEmail) {
+    public Map<String, Object> getProjectById(Long orgId, Long projectId, String userEmail) {
         requireId(projectId, "project_id");
-        getUserId(userEmail);
+        getUserId(orgId, userEmail);
 
-        Map<String, Object> project = projectsRepository.findProjectRowById(projectId);
+        Map<String, Object> project = projectsRepository.findProjectRowById(orgId, projectId);
         if (project == null || project.isEmpty()) {
             throw new ResourceNotFoundException("Project not found");
         }
@@ -70,11 +70,11 @@ public class ProjectsService {
         Map<String, Object> response = new LinkedHashMap<>(project);
 
         List<Sprints> sprintRows =
-                sprintsRepository.findSprintRowsByProjectId(projectId);
+                sprintsRepository.findSprintRowsByProjectId(orgId, projectId);
 
         response.put("sprints", copyRowsForSprints(sprintRows));
 
-        response.put("teams", getProjectTeamsAndUsers(projectId));
+        response.put("teams", getProjectTeamsAndUsers(orgId, projectId));
 
         response.put(
                 "associatedTeamIds",
@@ -90,16 +90,14 @@ public class ProjectsService {
     }
 
     @Transactional
-    public Map<String, Object> createProject(
-            Map<String, Object> payload,
-            String userEmail
-    ) {
-        Long userId = getUserId(userEmail);
+    public Map<String, Object> createProject(Long orgId, Map<String, Object> payload,
+                                             String userEmail) {
+        Long userId = getUserId(orgId, userEmail);
 
         String name = requiredString(payload, "name");
         Long productId = requiredLong(payload, "product_id");
 
-        int inserted = projectsRepository.insertProject(
+        int inserted = projectsRepository.insertProject(orgId,
                 userId,
                 productId,
                 stringValue(payload, "project_code", ""),
@@ -133,15 +131,13 @@ public class ProjectsService {
     }
 
     @Transactional
-    public Map<String, Object> updateProject(
-            Long projectId,
-            Map<String, Object> payload,
-            String userEmail
-    ) {
+    public Map<String, Object> updateProject(Long orgId, Long projectId,
+                                             Map<String, Object> payload,
+                                             String userEmail) {
         requireId(projectId, "project_id");
-        getUserId(userEmail);
+        getUserId(orgId, userEmail);
 
-        Map<String, Object> existing = projectsRepository.findProjectRowById(projectId);
+        Map<String, Object> existing = projectsRepository.findProjectRowById(orgId, projectId);
         if (existing == null || existing.isEmpty()) {
             throw new ResourceNotFoundException("Project not found");
         }
@@ -153,7 +149,7 @@ public class ProjectsService {
         String methodology = stringValue(payload, "methodology", stringValue(existing, "methodology", "AGILE_SCRUM"));
         String priority = stringValue(payload, "priority", stringValue(existing, "priority", "MEDIUM"));
 
-        int updated = projectsRepository.updateProjectRow(
+        int updated = projectsRepository.updateProjectRow(orgId,
                 projectId,
                 productId,
                 stringValue(payload, "project_code", stringValue(existing, "project_code", "")),
@@ -183,14 +179,12 @@ public class ProjectsService {
     }
 
     @Transactional
-    public Map<String, Object> deleteProject(
-            Long projectId,
-            String userEmail
-    ) {
+    public Map<String, Object> deleteProject(Long orgId, Long projectId,
+                                             String userEmail) {
         requireId(projectId, "project_id");
-        getUserId(userEmail);
+        getUserId(orgId, userEmail);
 
-        int deleted = projectsRepository.deleteProjectRow(projectId);
+        int deleted = projectsRepository.deleteProjectRow(orgId, projectId);
         if (deleted == 0) {
             throw new ResourceNotFoundException("Project not found");
         }
@@ -201,7 +195,7 @@ public class ProjectsService {
         return result;
     }
 
-    private List<Map<String, Object>> getProjectTeamsAndUsers(Long projectId) {
+    private List<Map<String, Object>> getProjectTeamsAndUsers(Long orgId, Long projectId) {
         List<Long> teamIds = projectTeamsRepository.findTeamIdsByProjectId(projectId);
         List<Map<String, Object>> teams = new ArrayList<>();
 
@@ -248,13 +242,13 @@ public class ProjectsService {
         }
     }
 
-    private Long getUserId(String email) {
+    private Long getUserId(Long orgId, String email) {
         if (email == null || email.trim().isEmpty()) {
             throw new IllegalArgumentException("Authenticated user email is required");
         }
 
         UserAccount account = userAccountRepository
-                .findByEmail(email.trim().toLowerCase())
+                .findByOrgIdAndEmail(orgId, email.trim().toLowerCase())
                 .orElseThrow(() -> new IllegalArgumentException("Authenticated user not found"));
 
         return account.getId();

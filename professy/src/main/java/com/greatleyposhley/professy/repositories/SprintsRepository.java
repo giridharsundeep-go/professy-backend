@@ -13,31 +13,35 @@ import java.util.Optional;
 @Repository
 public interface SprintsRepository extends JpaRepository<Sprints, Long> {
 
-    // Python: get_all_sprints()
-    List<Sprints> findAllByOrderByIdAsc();
+    // Get all sprints for an organization
+    List<Sprints> findAllByOrgIdOrderByIdAsc(Long orgId);
 
-    // Python: get_sprints_by_project_id()
-    List<Sprints> findAllByProject_IdOrderBySprintNumberAsc(
+    // Get sprints by organization and project
+    List<Sprints> findAllByOrgIdAndProject_IdOrderBySprintNumberAsc(
+            Long orgId,
             Long projectId
     );
 
     // Used by create/sync because DB has:
     // UNIQUE(project_id, sprint_number)
-    Optional<Sprints> findByProject_IdAndSprintNumber(
+    Optional<Sprints> findByOrgIdAndProject_IdAndSprintNumber(
+            Long orgId,
             Long projectId,
             Integer sprintNumber
     );
 
-    // Python: get_automatic_sprints_to_activate()
+    // Get automatic sprints to activate for an organization
     List<Sprints>
-    findAllByStatusAndActivationTypeAndScheduledStartDateLessThanEqual(
+    findAllByOrgIdAndStatusAndActivationTypeAndScheduledStartDateLessThanEqual(
+            Long orgId,
             String status,
             String activationType,
             LocalDate checkDate
     );
 
     // Used by sync_and_recreate_planned_sprints()
-    List<Sprints> findAllByProject_IdAndStatus(
+    List<Sprints> findAllByOrgIdAndProject_IdAndStatus(
+            Long orgId,
             Long projectId,
             String status
     );
@@ -45,10 +49,12 @@ public interface SprintsRepository extends JpaRepository<Sprints, Long> {
     @Query("""
         SELECT s
         FROM Sprints s
-        WHERE s.project.id = :projectId
+        WHERE s.orgId = :orgId
+          AND s.project.id = :projectId
         ORDER BY s.sprintNumber ASC
     """)
-    List<Sprints> findSprintRowsByProjectId(@Param("projectId") Long projectId);
-
-
+    List<Sprints> findSprintRowsByProjectId(
+            @Param("orgId") Long orgId,
+            @Param("projectId") Long projectId
+    );
 }

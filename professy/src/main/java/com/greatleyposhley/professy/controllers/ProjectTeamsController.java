@@ -1,5 +1,6 @@
 package com.greatleyposhley.professy.controllers;
 
+import com.greatleyposhley.professy.components.OrgComponent;
 import com.greatleyposhley.professy.services.ProjectTeamsService;
 import com.greatleyposhley.professy.services.ProjectsService;
 import java.util.List;
@@ -20,9 +21,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class ProjectTeamsController {
 
     private final ProjectTeamsService projectTeamsService;
+    private final OrgComponent orgComponent;
 
-    public ProjectTeamsController(ProjectTeamsService projectTeamsService) {
+    public ProjectTeamsController(ProjectTeamsService projectTeamsService, OrgComponent orgComponent) {
         this.projectTeamsService = projectTeamsService;
+        this.orgComponent = orgComponent;
     }
 
     @PostMapping("/sync")
@@ -31,9 +34,10 @@ public class ProjectTeamsController {
             Authentication authentication
     ) {
         try {
+            Long orgId = orgComponent.getOrgId(authentication);
             Long projectId = readLong(payload, "project_id");
             List<Long> teamIds = readIdList(payload, "team_ids");
-            Map<String, Object> data = projectTeamsService.syncTeams(
+            Map<String, Object> data = projectTeamsService.syncTeams(orgId,
                     projectId,
                     teamIds,
                     authentication.getName()
@@ -54,8 +58,9 @@ public class ProjectTeamsController {
             Authentication authentication
     ) {
         try {
+            Long orgId = orgComponent.getOrgId(authentication);
             return success(
-                    projectTeamsService.getTeamsByProject(projectId, authentication.getName()),
+                    projectTeamsService.getTeamsByProject(orgId, projectId, authentication.getName()),
                     "Project teams fetched successfully",
                     HttpStatus.OK
             );
@@ -75,8 +80,9 @@ public class ProjectTeamsController {
             Authentication authentication
     ) {
         try {
+            Long orgId = orgComponent.getOrgId(authentication);
             return success(
-                    projectTeamsService.removeTeamFromProject(projectId, teamId, authentication.getName()),
+                    projectTeamsService.removeTeamFromProject(orgId, projectId, teamId, authentication.getName()),
                     "Team removed from project successfully",
                     HttpStatus.OK
             );

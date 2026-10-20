@@ -39,9 +39,9 @@ public class EpicsService {
     }
 
     @Transactional
-    public Map<String, Object> createEpic(Map<String, Object> payload,
+    public Map<String, Object> createEpic(Long orgId, Map<String, Object> payload,
                                           String userEmail) {
-        UserAccount userAccount = getUserAccount(userEmail);
+        UserAccount userAccount = getUserAccount(orgId, userEmail);
 
         Long projectId = readLong(payload, "project_id");
         Long sprintId = readLong(payload, "sprint_id");
@@ -64,7 +64,7 @@ public class EpicsService {
             );
         }
 
-        Projects project = getProject(projectId);
+        Projects project = getProject(orgId, projectId);
 
         /*
          * The Flask implementation uses the authenticated user as
@@ -75,16 +75,17 @@ public class EpicsService {
                         ? creatorUserId
                         : userAccount.getId();
 
-        Users creator = getUser(effectiveCreatorId);
-        Sprints sprint = getOptionalSprint(sprintId);
-        Users assignee = getOptionalUser(assigneeUserId);
-        Users reporter = getOptionalUser(reporterUserId);
+        Users creator = getUser(orgId, effectiveCreatorId);
+        Sprints sprint = getOptionalSprint(orgId, sprintId);
+        Users assignee = getOptionalUser(orgId, assigneeUserId);
+        Users reporter = getOptionalUser(orgId, reporterUserId);
 
         if (status == null || status.isBlank()) {
             status = "BACKLOG";
         }
 
         Epics epic = new Epics();
+        epic.setOrgId(orgId);
         epic.setProject(project);
         epic.setSprint(sprint);
         epic.setUserAccount(userAccount);
@@ -105,23 +106,48 @@ public class EpicsService {
         return result;
     }
 
+    @Transactional
+    public List<Map<String, Object>> bulkCreateEpics(Long orgId, List<Map<String, Object>> payloads,
+                                                     String userEmail) {
+
+        if (payloads == null || payloads.isEmpty()) {
+            throw new IllegalArgumentException("At least one epic is required");
+        }
+
+        List<Map<String, Object>> results = new ArrayList<>();
+
+        for (int i = 0; i < payloads.size(); i++) {
+            Map<String, Object> payload = payloads.get(i);
+
+            if (payload == null) {
+                throw new IllegalArgumentException(
+                        "Epic at index " + i + " must not be null"
+                );
+            }
+
+            results.add(createEpic(orgId, payload, userEmail));
+        }
+
+        return results;
+    }
+
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> getEpicsByProject(Long projectId,
+    public List<Map<String, Object>> getEpicsByProject(Long orgId, Long projectId,
                                                        String userEmail) {
-        getUserAccount(userEmail);
-        getProject(projectId);
+        getUserAccount(orgId, userEmail);
+        getProject(orgId, projectId);
 
         List<Map<String, Object>> result = new ArrayList<>();
-        for (Epics epic : epicsRepository.findAllByProject_IdOrderByCreatedAtDesc(projectId)) {
+        for (Epics epic : epicsRepository.findAllByOrgIdAndProject_IdOrderByCreatedAtDesc(orgId, projectId)) {
             result.add(toResponse(epic));
         }
         return result;
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> getEpicById(Long epicId,
+    public Map<String, Object> getEpicById(Long orgId, Long epicId,
                                            String userEmail) {
-        getUserAccount(userEmail);
+        getUserAccount(orgId, userEmail);
 
         Epics epic = epicsRepository.findById(epicId)
                 .orElseThrow(() -> new IllegalArgumentException("Epic not found"));
@@ -130,10 +156,10 @@ public class EpicsService {
     }
 
     @Transactional
-    public Map<String, Object> updateEpic(Long epicId,
+    public Map<String, Object> updateEpic(Long orgId, Long epicId,
                                           Map<String, Object> payload,
                                           String userEmail) {
-        getUserAccount(userEmail);
+        getUserAccount(orgId, userEmail);
 
         Epics epic = epicsRepository.findById(epicId)
                 .orElseThrow(() -> new IllegalArgumentException("Epic not found"));
@@ -154,10 +180,10 @@ public class EpicsService {
 
         epic.setName(name.trim());
         epic.setDescription(description);
-        epic.setSprint(getOptionalSprint(sprintId));
+        epic.setSprint(getOptionalSprint(orgId, sprintId));
         epic.setStatus(status.trim());
-        epic.setAssignee(getOptionalUser(assigneeUserId));
-        epic.setReporter(getOptionalUser(reporterUserId));
+        epic.setAssignee(getOptionalUser(orgId, assigneeUserId));
+        epic.setReporter(getOptionalUser(orgId, reporterUserId));
 
         Epics saved = epicsRepository.save(epic);
 
@@ -177,9 +203,9 @@ public class EpicsService {
     }
 
     @Transactional
-    public Map<String, Object> deleteEpic(Long epicId,
+    public Map<String, Object> deleteEpic(Long orgId, Long epicId,
                                           String userEmail) {
-        getUserAccount(userEmail);
+        getUserAccount(orgId, userEmail);
 
         if (!epicsRepository.existsById(epicId)) {
             throw new IllegalArgumentException("Epic not found");
@@ -229,7 +255,7 @@ public class EpicsService {
         return result;
     }
 
-    private Projects getProject(Long projectId) {
+    private Projects getProject(Long orgId, Long projectId) {
         if (projectId == null || projectId <= 0) {
             throw new IllegalArgumentException("Invalid project_id");
         }
@@ -238,7 +264,7 @@ public class EpicsService {
                 .orElseThrow(() -> new IllegalArgumentException("Project not found"));
     }
 
-    private Sprints getOptionalSprint(Long sprintId) {
+    private Sprints getOptionalSprint(Long orgId, Long sprintId) {
         if (sprintId == null) {
             return null;
         }
@@ -251,15 +277,15 @@ public class EpicsService {
                 .orElseThrow(() -> new IllegalArgumentException("Sprint not found"));
     }
 
-    private Users getOptionalUser(Long userId) {
+    private Users getOptionalUser(Long orgId, Long userId) {
         if (userId == null) {
             return null;
         }
 
-        return getUser(userId);
+        return getUser(orgId, userId);
     }
 
-    private Users getUser(Long userId) {
+    private Users getUser(Long orgId, Long userId) {
         if (userId == null || userId <= 0) {
             throw new IllegalArgumentException("Invalid user id");
         }
@@ -268,12 +294,12 @@ public class EpicsService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
     }
 
-    private UserAccount getUserAccount(String email) {
+    private UserAccount getUserAccount(Long orgId, String email) {
         if (email == null || email.isBlank()) {
             throw new IllegalArgumentException("Authenticated user email is required");
         }
 
-        return userAccountRepository.findByEmail(email.trim().toLowerCase())
+        return userAccountRepository.findByOrgIdAndEmail(orgId, email.trim().toLowerCase())
                 .orElseThrow(
                         () -> new IllegalArgumentException("Authenticated user not found")
                 );

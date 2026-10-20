@@ -8,5 +8,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface EpicsRepository extends JpaRepository<Epics, Long> {
 
-    List<Epics> findAllByProject_IdOrderByCreatedAtDesc(Long projectId);
+    List<Epics> findAllByOrgIdAndProject_IdOrderByCreatedAtDesc(Long orgId, Long projectId);
 }

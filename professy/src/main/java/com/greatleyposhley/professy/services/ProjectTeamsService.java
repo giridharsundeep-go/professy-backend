@@ -32,12 +32,12 @@ public class ProjectTeamsService {
     }
 
     @Transactional
-    public Map<String, Object> syncTeams(
+    public Map<String, Object> syncTeams(long orgId,
             Long projectId,
             List<Long> teamIds,
             String userEmail
     ) {
-        validateProject(projectId);
+        validateProject(orgId, projectId);
         Long userId = getUserId(userEmail);
 
         List<Long> safeTeamIds = teamIds == null ? List.of() : teamIds.stream()
@@ -62,19 +62,19 @@ public class ProjectTeamsService {
     }
 
     @Transactional(readOnly = true)
-    public List<Long> getTeamsByProject(Long projectId, String userEmail) {
-        validateProject(projectId);
+    public List<Long> getTeamsByProject(Long orgId, Long projectId, String userEmail) {
+        validateProject(orgId, projectId);
         getUserId(userEmail);
         return projectTeamsRepository.findTeamIdsByProjectId(projectId);
     }
 
     @Transactional
-    public Map<String, Object> removeTeamFromProject(
+    public Map<String, Object> removeTeamFromProject(Long orgId,
             Long projectId,
             Long teamId,
             String userEmail
     ) {
-        validateProject(projectId);
+        validateProject(orgId, projectId);
         getUserId(userEmail);
 
         int deleted = projectTeamsRepository.removeProjectTeam(projectId, teamId);
@@ -89,11 +89,11 @@ public class ProjectTeamsService {
         return result;
     }
 
-    private void validateProject(Long projectId) {
+    private void validateProject(Long orgId, Long projectId) {
         if (projectId == null || projectId <= 0) {
             throw new IllegalArgumentException("project_id is required");
         }
-        if (projectsRepository.findProjectRowById(projectId) == null) {
+        if (projectsRepository.findProjectRowById(orgId, projectId) == null) {
             throw new ProjectsService.ResourceNotFoundException("Project not found");
         }
     }

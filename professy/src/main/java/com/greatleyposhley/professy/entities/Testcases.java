@@ -16,6 +16,9 @@ public class Testcases {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "org_id", nullable = false)
+    private Long orgId;
+
     @Column(name = "test_case_code", length = 50, unique = true)
     private String testCaseCode;
 
@@ -103,6 +106,9 @@ public class Testcases {
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
+    public Long getOrgId() { return orgId; }
+    public void setOrgId(Long orgId) { this.orgId = orgId; }
+
     public String getTestCaseCode() { return testCaseCode; }
     public void setTestCaseCode(String testCaseCode) { this.testCaseCode = testCaseCode; }
 
@@ -136,8 +142,8 @@ public class Testcases {
     public Epics getEpic() { return epic; }
     public void setEpic(Epics epic) { this.epic = epic; }
 
-    public TestSuites getTestSuite() { return testSuite;}
-    public void setTestSuite(TestSuites testSuite) {this.testSuite = testSuite;}
+    public TestSuites getTestSuite() { return testSuite; }
+    public void setTestSuite(TestSuites testSuite) { this.testSuite = testSuite; }
 
     public Stories getStory() { return story; }
     public void setStory(Stories story) { this.story = story; }

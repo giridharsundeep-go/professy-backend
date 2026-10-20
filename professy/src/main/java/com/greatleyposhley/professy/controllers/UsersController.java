@@ -1,322 +1,110 @@
 package com.greatleyposhley.professy.controllers;
 
+import com.greatleyposhley.professy.entities.UserAccount;
 import com.greatleyposhley.professy.entities.Users;
+import com.greatleyposhley.professy.repositories.UserAccountRepository;
 import com.greatleyposhley.professy.services.UsersService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
 public class UsersController {
-
     private final UsersService usersService;
+    private final UserAccountRepository userAccountRepository;
 
-    public UsersController(UsersService usersService) {
+    public UsersController(UsersService usersService, UserAccountRepository userAccountRepository) {
         this.usersService = usersService;
+        this.userAccountRepository = userAccountRepository;
     }
 
-    /*
-     * GET ALL USERS
-     *
-     * Angular:
-     * GET /api/user
-     */
     @GetMapping("/users")
-    public ResponseEntity<Map<String, Object>> getAllUsers() {
-
-        try {
-
-            List<Users> users =
-                    usersService.getAllUsers();
-
-            Map<String, Object> response =
-                    new HashMap<>();
-
-            response.put("data", users);
-            response.put("success", true);
-            response.put(
-                    "message",
-                    "Users fetched successfully"
-            );
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-
-            Map<String, Object> response =
-                    new HashMap<>();
-
-            response.put("success", false);
-            response.put("message", e.getMessage());
-
-            return ResponseEntity
-                    .status(HttpStatus.BAD_REQUEST)
-                    .body(response);
-        }
+    public ResponseEntity<Map<String, Object>> getAllUsers(Authentication auth) {
+        try { return success(usersService.getAllUsers(getOrgId(auth)), "Users fetched successfully", HttpStatus.OK); }
+        catch (Exception e) { return failure(e); }
     }
 
-    /*
-     * GET USER BY ID
-     *
-     * GET /api/user/{id}
-     */
     @GetMapping("/users/{id}")
-    public ResponseEntity<Map<String, Object>> getUserById(
-            @PathVariable Long id) {
-
-        try {
-
-            Users user =
-                    usersService.getUserById(id);
-
-            Map<String, Object> response =
-                    new HashMap<>();
-
-            response.put("data", user);
-            response.put("success", true);
-            response.put(
-                    "message",
-                    "User fetched successfully"
-            );
-
-            return ResponseEntity.ok(response);
-
-        } catch (RuntimeException e) {
-
-            Map<String, Object> response =
-                    new HashMap<>();
-
-            response.put("success", false);
-            response.put("message", e.getMessage());
-
-            return ResponseEntity
-                    .status(HttpStatus.NOT_FOUND)
-                    .body(response);
-        }
+    public ResponseEntity<Map<String, Object>> getUserById(@PathVariable Long id, Authentication auth) {
+        try { return success(usersService.getUserById(getOrgId(auth), id), "User fetched successfully", HttpStatus.OK); }
+        catch (Exception e) { return failure(e); }
     }
 
-    /*
-     * GET USER BY EMAIL
-     *
-     * GET /api/users/by-email?email=...
-     */
     @GetMapping("/users/by-email")
-    public ResponseEntity<Map<String, Object>> getUserByEmail(
-            @RequestParam String email) {
-
-        try {
-
-            Users user =
-                    usersService.getUserByEmail(email);
-
-            Map<String, Object> response =
-                    new HashMap<>();
-
-            response.put("data", user);
-            response.put("success", true);
-            response.put(
-                    "message",
-                    "User fetched successfully"
-            );
-
-            return ResponseEntity.ok(response);
-
-        } catch (RuntimeException e) {
-
-            Map<String, Object> response =
-                    new HashMap<>();
-
-            response.put("success", false);
-            response.put("message", e.getMessage());
-
-            return ResponseEntity
-                    .status(HttpStatus.NOT_FOUND)
-                    .body(response);
-        }
+    public ResponseEntity<Map<String, Object>> getUserByEmail(@RequestParam String email, Authentication auth) {
+        try { return success(usersService.getUserByEmail(getOrgId(auth), email), "User fetched successfully", HttpStatus.OK); }
+        catch (Exception e) { return failure(e); }
     }
 
-    /*
-     * CHECK EMAIL
-     *
-     * GET /api/users/exists?email=...
-     */
     @GetMapping("/users/exists")
-    public ResponseEntity<Map<String, Object>> checkEmailExists(
-            @RequestParam String email) {
-
-        boolean exists =
-                usersService.existsByEmail(email);
-
-        Map<String, Object> response =
-                new HashMap<>();
-
-        response.put("data", exists);
-        response.put("success", true);
-        response.put(
-                "message",
-                "Email existence checked successfully"
-        );
-
-        return ResponseEntity.ok(response);
+    public ResponseEntity<Map<String, Object>> checkEmailExists(@RequestParam String email, Authentication auth) {
+        try { return success(usersService.existsByEmail(getOrgId(auth), email), "Email existence checked successfully", HttpStatus.OK); }
+        catch (Exception e) { return failure(e); }
     }
 
-    /*
-     * CREATE USER
-     *
-     * POST /api/user/create
-     *
-     * The authenticated UserAccount is obtained
-     * from JWT/SecurityContext.
-     */
     @PostMapping("/user/create")
-    public ResponseEntity<Map<String, Object>> createUser(
-            @RequestBody Users user,
-            Authentication authentication) {
-
+    public ResponseEntity<Map<String, Object>> createUser(@RequestBody Users user, Authentication auth) {
         try {
-
-            if (authentication == null ||
-                    !authentication.isAuthenticated()) {
-
-                Map<String, Object> response =
-                        new HashMap<>();
-
-                response.put("success", false);
-                response.put(
-                        "message",
-                        "Authentication required"
-                );
-
-                return ResponseEntity
-                        .status(HttpStatus.UNAUTHORIZED)
-                        .body(response);
-            }
-
-            /*
-             * This is the email from JWT subject.
-             */
-            String authenticatedUserEmail =
-                    authentication.getName();
-
-            Users createdUser =
-                    usersService.createUser(
-                            user,
-                            authenticatedUserEmail
-                    );
-
-            Map<String, Object> response =
-                    new HashMap<>();
-
-            response.put("data", createdUser);
-            response.put("success", true);
-            response.put(
-                    "message",
-                    "User created successfully"
-            );
-
-            return ResponseEntity
-                    .status(HttpStatus.CREATED)
-                    .body(response);
-
-        } catch (RuntimeException e) {
-
-            Map<String, Object> response =
-                    new HashMap<>();
-
-            response.put("success", false);
-            response.put("message", e.getMessage());
-
-            return ResponseEntity
-                    .status(HttpStatus.BAD_REQUEST)
-                    .body(response);
-        }
+            Long orgId = getOrgId(auth);
+            Users created = usersService.createUser(orgId, user, auth.getName());
+            return success(created, "User created successfully", HttpStatus.CREATED);
+        } catch (Exception e) { return failure(e); }
     }
 
-    /*
-     * UPDATE USER
-     *
-     * PUT /api/user/{id}
-     */
     @PutMapping("/users/{id}")
-    public ResponseEntity<Map<String, Object>> updateUser(
-            @PathVariable Long id,
-            @RequestBody Users user) {
-
-        try {
-
-            Users updatedUser =
-                    usersService.updateUser(
-                            id,
-                            user
-                    );
-
-            Map<String, Object> response =
-                    new HashMap<>();
-
-            response.put("data", updatedUser);
-            response.put("success", true);
-            response.put(
-                    "message",
-                    "User updated successfully"
-            );
-
-            return ResponseEntity.ok(response);
-
-        } catch (RuntimeException e) {
-
-            Map<String, Object> response =
-                    new HashMap<>();
-
-            response.put("success", false);
-            response.put("message", e.getMessage());
-
-            return ResponseEntity
-                    .status(HttpStatus.BAD_REQUEST)
-                    .body(response);
-        }
+    public ResponseEntity<Map<String, Object>> updateUser(@PathVariable Long id, @RequestBody Users user, Authentication auth) {
+        try { return success(usersService.updateUser(getOrgId(auth), id, user), "User updated successfully", HttpStatus.OK); }
+        catch (Exception e) { return failure(e); }
     }
 
-    /*
-     * DELETE USER
-     *
-     * DELETE /api/user/{id}
-     */
     @DeleteMapping("/users/{id}")
-    public ResponseEntity<Map<String, Object>> deleteUser(
-            @PathVariable Long id) {
-
+    public ResponseEntity<Map<String, Object>> deleteUser(@PathVariable Long id, Authentication auth) {
         try {
+            usersService.deleteUser(getOrgId(auth), id);
+            Map<String, Object> body = new HashMap<>();
+            body.put("success", true);
+            body.put("message", "User deleted successfully");
+            return ResponseEntity.ok(body);
+        } catch (Exception e) { return failure(e); }
+    }
 
-            usersService.deleteUser(id);
-
-            Map<String, Object> response =
-                    new HashMap<>();
-
-            response.put("success", true);
-            response.put(
-                    "message",
-                    "User deleted successfully"
-            );
-
-            return ResponseEntity.ok(response);
-
-        } catch (RuntimeException e) {
-
-            Map<String, Object> response =
-                    new HashMap<>();
-
-            response.put("success", false);
-            response.put("message", e.getMessage());
-
-            return ResponseEntity
-                    .status(HttpStatus.BAD_REQUEST)
-                    .body(response);
+    private Long getOrgId(Authentication auth) {
+        if (auth == null || !auth.isAuthenticated() || auth.getName() == null || auth.getName().trim().isEmpty()) {
+            throw new AuthenticationRequiredException("Authentication required");
         }
+        String email = auth.getName().trim().toLowerCase();
+        UserAccount account = userAccountRepository.findByEmail(email)
+                .orElseThrow(() -> new AuthenticationRequiredException("Authenticated account not found"));
+        if (account.getOrgId() == null) throw new AuthenticationRequiredException("Authenticated account has no organization assigned");
+        return account.getOrgId();
+    }
+
+    private ResponseEntity<Map<String, Object>> success(Object data, String message, HttpStatus status) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("success", true);
+        body.put("message", message);
+        body.put("data", data);
+        return ResponseEntity.status(status).body(body);
+    }
+
+    private ResponseEntity<Map<String, Object>> failure(Exception e) {
+        HttpStatus status;
+        if (e instanceof AuthenticationRequiredException) status = HttpStatus.UNAUTHORIZED;
+        else if (e instanceof UsersService.ResourceNotFoundException) status = HttpStatus.NOT_FOUND;
+        else if (e instanceof UsersService.DuplicateResourceException) status = HttpStatus.CONFLICT;
+        else if (e instanceof IllegalArgumentException) status = HttpStatus.BAD_REQUEST;
+        else status = HttpStatus.INTERNAL_SERVER_ERROR;
+        Map<String, Object> body = new HashMap<>();
+        body.put("success", false);
+        body.put("message", e.getMessage() == null ? "Request failed" : e.getMessage());
+        return ResponseEntity.status(status).body(body);
+    }
+
+    private static class AuthenticationRequiredException extends RuntimeException {
+        AuthenticationRequiredException(String message) { super(message); }
     }
 }

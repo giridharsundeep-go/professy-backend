@@ -1,6 +1,7 @@
 package com.greatleyposhley.professy.controllers;
 
 import com.greatleyposhley.professy.services.EpicsService;
+import com.greatleyposhley.professy.repositories.UserAccountRepository;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,8 +15,11 @@ import org.springframework.web.bind.annotation.*;
 public class EpicsController {
 
     private final EpicsService epicsService;
+    private final UserAccountRepository userAccountRepository;
 
-    public EpicsController(EpicsService epicsService) {
+    public EpicsController(EpicsService epicsService,
+                           UserAccountRepository userAccountRepository) {
+        this.userAccountRepository = userAccountRepository;
         this.epicsService = epicsService;
     }
 
@@ -23,9 +27,11 @@ public class EpicsController {
     public ResponseEntity<Map<String, Object>> createEpic(
             @RequestBody Map<String, Object> payload,
             Authentication authentication) {
+        Long orgId = getOrgId(authentication);
         try {
             Map<String, Object> data =
-                    epicsService.createEpic(payload, authentication.getName());
+                    epicsService.createEpic(orgId,
+                            payload, authentication.getName());
 
             return success(
                     data,
@@ -39,13 +45,40 @@ public class EpicsController {
         }
     }
 
+    @PostMapping("/epics/bulk-create")
+    public ResponseEntity<Map<String, Object>> bulkCreateEpics(
+            @RequestBody List<Map<String, Object>> payloads,
+            Authentication authentication) {
+        Long orgId = getOrgId(authentication);
+        try {
+            List<Map<String, Object>> data =
+                    epicsService.bulkCreateEpics(
+                            orgId,
+                            payloads,
+                            authentication.getName()
+                    );
+
+            return success(
+                    data,
+                    "Epics created successfully",
+                    HttpStatus.CREATED
+            );
+        } catch (IllegalArgumentException ex) {
+            return error(ex.getMessage(), HttpStatus.BAD_REQUEST);
+        } catch (Exception ex) {
+            return error(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
     @GetMapping("/projects/{projectId}/epics")
     public ResponseEntity<Map<String, Object>> getProjectEpics(
             @PathVariable Long projectId,
             Authentication authentication) {
+        Long orgId = getOrgId(authentication);
         try {
             List<Map<String, Object>> data =
                     epicsService.getEpicsByProject(
+                            orgId,
                             projectId,
                             authentication.getName()
                     );
@@ -64,9 +97,11 @@ public class EpicsController {
     public ResponseEntity<Map<String, Object>> getEpic(
             @PathVariable Long epicId,
             Authentication authentication) {
+        Long orgId = getOrgId(authentication);
         try {
             Map<String, Object> data =
                     epicsService.getEpicById(
+                            orgId,
                             epicId,
                             authentication.getName()
                     );
@@ -88,9 +123,11 @@ public class EpicsController {
             @PathVariable Long epicId,
             @RequestBody Map<String, Object> payload,
             Authentication authentication) {
+        Long orgId = getOrgId(authentication);
         try {
             Map<String, Object> data =
                     epicsService.updateEpic(
+                            orgId,
                             epicId,
                             payload,
                             authentication.getName()
@@ -117,9 +154,11 @@ public class EpicsController {
     public ResponseEntity<Map<String, Object>> deleteEpic(
             @PathVariable Long epicId,
             Authentication authentication) {
+        Long orgId = getOrgId(authentication);
         try {
             Map<String, Object> data =
                     epicsService.deleteEpic(
+                            orgId,
                             epicId,
                             authentication.getName()
                     );
@@ -166,5 +205,25 @@ public class EpicsController {
         return ResponseEntity
                 .status(status)
                 .body(response);
+    }
+
+
+    private Long getOrgId(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new IllegalArgumentException("Authentication required");
+        }
+
+        String email = authentication.getName();
+
+        if (email == null || email.trim().isEmpty()) {
+            throw new IllegalArgumentException("Authenticated user is required");
+        }
+
+        return userAccountRepository
+                .findByEmail(email.trim().toLowerCase())
+                .map(account -> account.getOrgId())
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Authenticated user not found")
+                );
     }
 }

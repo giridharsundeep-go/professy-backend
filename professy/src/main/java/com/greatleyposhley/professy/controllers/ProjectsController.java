@@ -1,6 +1,7 @@
 package com.greatleyposhley.professy.controllers;
 
 import com.greatleyposhley.professy.services.ProjectsService;
+import com.greatleyposhley.professy.repositories.UserAccountRepository;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -20,8 +21,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class ProjectsController {
 
     private final ProjectsService projectsService;
+    private final UserAccountRepository userAccountRepository;
 
-    public ProjectsController(ProjectsService projectsService) {
+    public ProjectsController(ProjectsService projectsService,
+                              UserAccountRepository userAccountRepository) {
+        this.userAccountRepository = userAccountRepository;
         this.projectsService = projectsService;
     }
 
@@ -30,8 +34,10 @@ public class ProjectsController {
             @RequestBody Map<String, Object> payload,
             Authentication authentication
     ) {
+        Long orgId = getOrgId(authentication);
         try {
-            Map<String, Object> data = projectsService.createProject(payload, authentication.getName());
+            Map<String, Object> data = projectsService.createProject(orgId,
+                    payload, authentication.getName());
             return success(data, "Project created successfully", HttpStatus.CREATED);
         } catch (ProjectsService.ResourceNotFoundException ex) {
             return error(ex.getMessage(), HttpStatus.NOT_FOUND);
@@ -44,8 +50,10 @@ public class ProjectsController {
 
     @GetMapping
     public ResponseEntity<Map<String, Object>> getProjects(Authentication authentication) {
+        Long orgId = getOrgId(authentication);
         try {
-            List<Map<String, Object>> data = projectsService.getProjects(authentication.getName());
+            List<Map<String, Object>> data = projectsService.getProjects(orgId,
+                    authentication.getName());
             return success(data, "Projects fetched successfully", HttpStatus.OK);
         } catch (IllegalArgumentException ex) {
             return error(ex.getMessage(), HttpStatus.BAD_REQUEST);
@@ -59,8 +67,10 @@ public class ProjectsController {
             @PathVariable Long productId,
             Authentication authentication
     ) {
+        Long orgId = getOrgId(authentication);
         try {
-            List<Map<String, Object>> data = projectsService.getProjectsByProduct(productId, authentication.getName());
+            List<Map<String, Object>> data = projectsService.getProjectsByProduct(orgId,
+                    productId, authentication.getName());
             return success(data, "Projects fetched successfully", HttpStatus.OK);
         } catch (IllegalArgumentException ex) {
             return error(ex.getMessage(), HttpStatus.BAD_REQUEST);
@@ -74,8 +84,10 @@ public class ProjectsController {
             @PathVariable Long projectId,
             Authentication authentication
     ) {
+        Long orgId = getOrgId(authentication);
         try {
-            Map<String, Object> data = projectsService.getProjectById(projectId, authentication.getName());
+            Map<String, Object> data = projectsService.getProjectById(orgId,
+                    projectId, authentication.getName());
             return success(data, "Project fetched successfully", HttpStatus.OK);
         } catch (ProjectsService.ResourceNotFoundException ex) {
             return error(ex.getMessage(), HttpStatus.NOT_FOUND);
@@ -92,8 +104,10 @@ public class ProjectsController {
             @RequestBody Map<String, Object> payload,
             Authentication authentication
     ) {
+        Long orgId = getOrgId(authentication);
         try {
-            Map<String, Object> data = projectsService.updateProject(projectId, payload, authentication.getName());
+            Map<String, Object> data = projectsService.updateProject(orgId,
+                    projectId, payload, authentication.getName());
             return success(data, "Project updated successfully", HttpStatus.OK);
         } catch (ProjectsService.ResourceNotFoundException ex) {
             return error(ex.getMessage(), HttpStatus.NOT_FOUND);
@@ -109,8 +123,10 @@ public class ProjectsController {
             @PathVariable Long projectId,
             Authentication authentication
     ) {
+        Long orgId = getOrgId(authentication);
         try {
-            Map<String, Object> data = projectsService.deleteProject(projectId, authentication.getName());
+            Map<String, Object> data = projectsService.deleteProject(orgId,
+                    projectId, authentication.getName());
             return success(data, "Project deleted successfully", HttpStatus.OK);
         } catch (ProjectsService.ResourceNotFoundException ex) {
             return error(ex.getMessage(), HttpStatus.NOT_FOUND);
@@ -135,5 +151,25 @@ public class ProjectsController {
         response.put("message", message == null ? "Request failed" : message);
         response.put("success", false);
         return ResponseEntity.status(status).body(response);
+    }
+
+
+    private Long getOrgId(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new IllegalArgumentException("Authentication required");
+        }
+
+        String email = authentication.getName();
+
+        if (email == null || email.trim().isEmpty()) {
+            throw new IllegalArgumentException("Authenticated user is required");
+        }
+
+        return userAccountRepository
+                .findByEmail(email.trim().toLowerCase())
+                .map(account -> account.getOrgId())
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Authenticated user not found")
+                );
     }
 }

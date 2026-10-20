@@ -24,7 +24,7 @@ public class TestSuitesService {
     // GET ALL
     // ============================================================
 
-    public List<TestSuites> getAllTestSuites() {
+    public List<TestSuites> getAllTestSuites(Long orgId) {
 
         return testSuitesRepository.findAll();
     }
@@ -34,7 +34,7 @@ public class TestSuitesService {
     // GET BY ID
     // ============================================================
 
-    public TestSuites getTestSuiteById(Long id) {
+    public TestSuites getTestSuiteById(Long orgId, Long id) {
 
         return testSuitesRepository.findById(id)
                 .orElseThrow(() ->
@@ -49,11 +49,9 @@ public class TestSuitesService {
     // GET BY TEST PLAN
     // ============================================================
 
-    public List<TestSuites> getTestSuitesByTestPlanId(
-            Long testPlanId
-    ) {
+    public List<TestSuites> getTestSuitesByTestPlanId(Long orgId, Long testPlanId) {
 
-        return testSuitesRepository.findByTestPlanId(testPlanId);
+        return testSuitesRepository.findByOrgIdAndTestPlanId(orgId, testPlanId);
     }
 
 
@@ -61,11 +59,9 @@ public class TestSuitesService {
     // GET BY PROJECT
     // ============================================================
 
-    public List<TestSuites> getTestSuitesByProjectId(
-            Long projectId
-    ) {
+    public List<TestSuites> getTestSuitesByProjectId(Long orgId, Long projectId) {
 
-        return testSuitesRepository.findByProjectId(projectId);
+        return testSuitesRepository.findByOrgIdAndProjectId(orgId, projectId);
     }
 
 
@@ -73,7 +69,11 @@ public class TestSuitesService {
     // CREATE / UPDATE
     // ============================================================
 
-    public TestSuites saveTestSuite(TestSuites testSuite) {
+    public TestSuites saveTestSuite(Long orgId, TestSuites testSuite) {
+        if (testSuite == null) {
+            throw new IllegalArgumentException("Test suite is required");
+        }
+        testSuite.setOrgId(orgId);
 
         return testSuitesRepository.save(testSuite);
     }
@@ -83,7 +83,7 @@ public class TestSuitesService {
     // DELETE
     // ============================================================
 
-    public void deleteTestSuite(Long id) {
+    public void deleteTestSuite(Long orgId, Long id) {
 
         if (!testSuitesRepository.existsById(id)) {
 

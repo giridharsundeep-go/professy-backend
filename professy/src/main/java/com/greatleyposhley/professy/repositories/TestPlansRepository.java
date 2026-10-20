@@ -9,7 +9,5 @@ import java.util.List;
 @Repository
 public interface TestPlansRepository extends JpaRepository<TestPlans, Long> {
 
-    List<TestPlans> findByProjectId(Long projectId);
-
+    List<TestPlans> findByOrgIdAndProjectId(Long orgId, Long projectId);
 }
-

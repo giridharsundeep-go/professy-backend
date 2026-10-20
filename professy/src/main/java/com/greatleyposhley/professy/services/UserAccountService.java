@@ -15,9 +15,13 @@ public class UserAccountService {
         this.userAccountRepository = userAccountRepository;
     }
 
-    public List<UserAccount> getAllUsers() {
+    public List<UserAccount> getAllUsers(Long orgId) {
 
-        return (List<UserAccount>) userAccountRepository.findAll();
+        return (List<UserAccount>) userAccountRepository.findByOrgId(orgId);
+    }
+
+    public UserAccount createUser(UserAccount user) {
+        return userAccountRepository.save(user);
     }
 
 }

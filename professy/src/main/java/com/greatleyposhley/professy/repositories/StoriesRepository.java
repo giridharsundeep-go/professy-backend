@@ -8,9 +8,13 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface StoriesRepository extends JpaRepository<Stories, Long> {
 
-    List<Stories> findAllByProject_IdOrderByCreatedAtAsc(Long projectId);
+    List<Stories> findAllByOrgIdAndProject_IdOrderByCreatedAtAsc(
+            Long orgId,
+            Long projectId
+    );
 
-    List<Stories> findAllBySprint_IdOrderByPriorityDescCreatedAtAsc(Long sprintId);
+    List<Stories> findAllByOrgIdAndSprint_IdOrderByPriorityDescCreatedAtAsc(
+            Long orgId,
+            Long sprintId
+    );
 }
-
-

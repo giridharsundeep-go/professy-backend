@@ -2,9 +2,11 @@ package com.greatleyposhley.professy.controllers;
 
 import com.greatleyposhley.professy.entities.TestPlans;
 import com.greatleyposhley.professy.services.TestPlansService;
+import com.greatleyposhley.professy.repositories.UserAccountRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -15,9 +17,12 @@ import java.util.List;
 public class TestPlansController {
 
     private final TestPlansService testPlansService;
+    private final UserAccountRepository userAccountRepository;
 
     @Autowired
-    public TestPlansController(TestPlansService testPlansService) {
+    public TestPlansController(TestPlansService testPlansService,
+                               UserAccountRepository userAccountRepository) {
+        this.userAccountRepository = userAccountRepository;
         this.testPlansService = testPlansService;
     }
 
@@ -27,10 +32,11 @@ public class TestPlansController {
     // ============================================================
 
     @GetMapping
-    public ResponseEntity<List<TestPlans>> getAllTestPlans() {
+    public ResponseEntity<List<TestPlans>> getAllTestPlans(Authentication authentication) {
+        Long orgId = getOrgId(authentication);
 
         return ResponseEntity.ok(
-                testPlansService.getAllTestPlans()
+                testPlansService.getAllTestPlans(orgId)
         );
     }
 
@@ -40,12 +46,13 @@ public class TestPlansController {
     // ============================================================
 
     @GetMapping("/{id}")
-    public ResponseEntity<TestPlans> getTestPlanById(
-            @PathVariable Long id
-    ) {
+    public ResponseEntity<TestPlans> getTestPlanById(@PathVariable Long id,
+                                                     Authentication authentication) {
+        Long orgId = getOrgId(authentication);
 
         return ResponseEntity.ok(
-                testPlansService.getTestPlanById(id)
+                testPlansService.getTestPlanById(orgId,
+                        id)
         );
     }
 
@@ -55,12 +62,13 @@ public class TestPlansController {
     // ============================================================
 
     @GetMapping("/project/{projectId}")
-    public ResponseEntity<List<TestPlans>> getTestPlansByProjectId(
-            @PathVariable Long projectId
-    ) {
+    public ResponseEntity<List<TestPlans>> getTestPlansByProjectId(@PathVariable Long projectId,
+                                                                   Authentication authentication) {
+        Long orgId = getOrgId(authentication);
 
         return ResponseEntity.ok(
-                testPlansService.getTestPlansByProjectId(projectId)
+                testPlansService.getTestPlansByProjectId(orgId,
+                        projectId)
         );
     }
 
@@ -70,12 +78,13 @@ public class TestPlansController {
     // ============================================================
 
     @PostMapping
-    public ResponseEntity<TestPlans> createTestPlan(
-            @RequestBody TestPlans testPlan
-    ) {
+    public ResponseEntity<TestPlans> createTestPlan(@RequestBody TestPlans testPlan,
+                                                    Authentication authentication) {
+        Long orgId = getOrgId(authentication);
 
         TestPlans saved =
-                testPlansService.saveTestPlan(testPlan);
+                testPlansService.saveTestPlan(orgId,
+                        testPlan);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -88,15 +97,16 @@ public class TestPlansController {
     // ============================================================
 
     @PutMapping("/{id}")
-    public ResponseEntity<TestPlans> updateTestPlan(
-            @PathVariable Long id,
-            @RequestBody TestPlans testPlan
-    ) {
+    public ResponseEntity<TestPlans> updateTestPlan(@PathVariable Long id,
+                                                    @RequestBody TestPlans testPlan,
+                                                    Authentication authentication) {
+        Long orgId = getOrgId(authentication);
 
         testPlan.setId(id);
 
         TestPlans updated =
-                testPlansService.saveTestPlan(testPlan);
+                testPlansService.saveTestPlan(orgId,
+                        testPlan);
 
         return ResponseEntity.ok(updated);
     }
@@ -107,13 +117,34 @@ public class TestPlansController {
     // ============================================================
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTestPlan(
-            @PathVariable Long id
-    ) {
+    public ResponseEntity<Void> deleteTestPlan(@PathVariable Long id,
+                                               Authentication authentication) {
+        Long orgId = getOrgId(authentication);
 
-        testPlansService.deleteTestPlan(id);
+        testPlansService.deleteTestPlan(orgId,
+                id);
 
         return ResponseEntity.noContent().build();
+    }
+
+
+    private Long getOrgId(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new IllegalArgumentException("Authentication required");
+        }
+
+        String email = authentication.getName();
+
+        if (email == null || email.trim().isEmpty()) {
+            throw new IllegalArgumentException("Authenticated user is required");
+        }
+
+        return userAccountRepository
+                .findByEmail(email.trim().toLowerCase())
+                .map(account -> account.getOrgId())
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Authenticated user not found")
+                );
     }
 }
 

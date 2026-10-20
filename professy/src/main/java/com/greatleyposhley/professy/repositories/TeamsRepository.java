@@ -10,10 +10,9 @@ import java.util.Optional;
 @Repository
 public interface TeamsRepository extends JpaRepository<Teams, Long> {
 
-    List<Teams> findAllByUserAccountId(Long userAccountId);
+    List<Teams> findAllByOrgIdAndUserAccountId(Long orgId, Long userAccountId);
 
-    Optional<Teams> findByIdAndUserAccountId(Long id, Long userAccountId);
+    Optional<Teams> findByIdAndOrgIdAndUserAccountId(Long id, Long orgId, Long userAccountId);
 
-    boolean existsByNameAndUserAccountId(String name, Long userAccountId);
-
+    boolean existsByOrgIdAndNameAndUserAccountId(Long orgId, String name, Long userAccountId);
 }

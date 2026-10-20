@@ -11,16 +11,14 @@ import java.util.Optional;
 @Repository
 public interface TestcasesRepository extends JpaRepository<Testcases, Long> {
 
-    @Override
     @EntityGraph(attributePaths = {"project", "epic", "story", "task", "user", "creator"})
-    List<Testcases> findAll();
-
-    @Override
-    @EntityGraph(attributePaths = {"project", "epic", "story", "task", "user", "creator"})
-    Optional<Testcases> findById(Long id);
+    List<Testcases> findAllByOrgId(Long orgId);
 
     @EntityGraph(attributePaths = {"project", "epic", "story", "task", "user", "creator"})
-    List<Testcases> findByProjectId(Long projectId);
+    Optional<Testcases> findByIdAndOrgId(Long id, Long orgId);
 
-    Optional<Testcases> findByTestCaseCode(String testCaseCode);
+    @EntityGraph(attributePaths = {"project", "epic", "story", "task", "user", "creator"})
+    List<Testcases> findByOrgIdAndProjectId(Long orgId, Long projectId);
+
+    Optional<Testcases> findByOrgIdAndTestCaseCode(Long orgId, String testCaseCode);
 }

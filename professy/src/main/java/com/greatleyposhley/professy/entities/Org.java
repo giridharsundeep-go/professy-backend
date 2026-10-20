@@ -28,10 +28,6 @@ public class Org {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private UserAccount userAccount;
-
     @Column(name = "title", nullable = false, length = 255)
     private String title;
 
@@ -58,9 +54,8 @@ public class Org {
     }
 
     // All-args Constructor
-    public Org(Long id, UserAccount userAccount, String title, String slug, String description, String email, String phone, String address, LocalDateTime createdAt) {
+    public Org(Long id, String title, String slug, String description, String email, String phone, String address, LocalDateTime createdAt) {
         this.id = id;
-        this.userAccount = userAccount;
         this.title = title;
         this.slug = slug;
         this.description = description;
@@ -85,14 +80,6 @@ public class Org {
 
     public void setId(Long id) {
         this.id = id;
-    }
-
-    public UserAccount getUserAccount() {
-        return userAccount;
-    }
-
-    public void setUserAccount(UserAccount userAccount) {
-        this.userAccount = userAccount;
     }
 
     public String getTitle() {

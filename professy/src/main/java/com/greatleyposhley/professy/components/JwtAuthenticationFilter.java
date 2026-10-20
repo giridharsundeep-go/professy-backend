@@ -1,3 +1,4 @@
+
 package com.greatleyposhley.professy.components;
 
 import io.jsonwebtoken.Claims;
@@ -26,10 +27,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     public JwtAuthenticationFilter(
             @Value("${jwt.secret}") String secret) {
-
         this.secretKey = Keys.hmacShaKeyFor(
                 secret.getBytes(StandardCharsets.UTF_8)
         );
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        // All authentication endpoints are public.
+        return request.getServletPath().startsWith("/api/auth/");
     }
 
     @Override
@@ -39,28 +45,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain)
             throws ServletException, IOException {
 
-        String path = request.getServletPath();
+        String authorizationHeader = request.getHeader("Authorization");
 
-        if (path.equals("/api/auth/login")) {
+        // No token: continue. Spring Security will enforce access rules.
+        if (authorizationHeader == null
+                || !authorizationHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String authorizationHeader =
-                request.getHeader("Authorization");
-
-        if (authorizationHeader == null ||
-                !authorizationHeader.startsWith("Bearer ")) {
-
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        String token =
-                authorizationHeader.substring(7);
+        String token = authorizationHeader.substring(7);
 
         try {
-
             Claims claims = Jwts.parser()
                     .verifyWith(secretKey)
                     .build()
@@ -69,29 +65,34 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             String email = claims.getSubject();
 
-            if (email != null &&
-                    SecurityContextHolder.getContext()
-                            .getAuthentication() == null) {
-
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(
-                                email,
-                                null,
-                                Collections.singletonList(
-                                        new SimpleGrantedAuthority("ROLE_USER")
-                                )
-                        );
-
-                SecurityContextHolder
-                        .getContext()
-                        .setAuthentication(authentication);
+            if (email == null || email.isBlank()) {
+                response.sendError(
+                        HttpServletResponse.SC_UNAUTHORIZED,
+                        "Invalid JWT subject"
+                );
+                return;
             }
 
-        } catch (Exception e) {
+            UsernamePasswordAuthenticationToken authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            email,
+                            null,
+                            Collections.singletonList(
+                                    new SimpleGrantedAuthority("ROLE_USER")
+                            )
+                    );
 
-            System.out.println(
-                    "JWT validation failed: " + e.getMessage()
+            SecurityContextHolder.getContext()
+                    .setAuthentication(authentication);
+
+        } catch (Exception ex) {
+            SecurityContextHolder.clearContext();
+
+            response.sendError(
+                    HttpServletResponse.SC_UNAUTHORIZED,
+                    "Invalid or expired JWT"
             );
+            return;
         }
 
         filterChain.doFilter(request, response);

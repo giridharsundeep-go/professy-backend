@@ -8,11 +8,15 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface TasksRepository extends JpaRepository<Tasks, Long> {
 
-    List<Tasks> findAllByOrderByCreatedAtAsc();
+    List<Tasks> findAllByOrgIdOrderByCreatedAtAsc(Long orgId);
 
-    List<Tasks> findAllBySprint_IdOrderByCreatedAtAsc(Long sprintId);
+    List<Tasks> findAllByOrgIdAndSprint_IdOrderByCreatedAtAsc(
+            Long orgId,
+            Long sprintId
+    );
 
-    List<Tasks> findAllByStory_IdOrderByCreatedAtAsc(Long storyId);
+    List<Tasks> findAllByOrgIdAndStory_IdOrderByCreatedAtAsc(
+            Long orgId,
+            Long storyId
+    );
 }
-
-

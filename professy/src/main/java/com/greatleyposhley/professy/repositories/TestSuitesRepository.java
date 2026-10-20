@@ -9,8 +9,7 @@ import java.util.List;
 @Repository
 public interface TestSuitesRepository extends JpaRepository<TestSuites, Long> {
 
-    List<TestSuites> findByTestPlanId(Long testPlanId);
+    List<TestSuites> findByOrgIdAndTestPlanId(Long orgId, Long testPlanId);
 
-    List<TestSuites> findByProjectId(Long projectId);
-
+    List<TestSuites> findByOrgIdAndProjectId(Long orgId, Long projectId);
 }

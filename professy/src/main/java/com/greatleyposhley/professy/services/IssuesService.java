@@ -42,7 +42,11 @@ public class IssuesService {
     }
 
     @Transactional
-    public Issues createIssue(Issues issue) {
+    public Issues createIssue(Long orgId, Issues issue) {
+        if (issue == null) {
+            throw new IllegalArgumentException("Issue is required");
+        }
+        issue.setOrgId(orgId);
         // 1. Resolve Project
         if (issue.getProject() != null && issue.getProject().getId() != null) {
             Long projId = issue.getProject().getId();
@@ -130,6 +134,30 @@ public class IssuesService {
         return issuesRepository.save(issue);
     }
 
+    @Transactional
+    public List<Issues> bulkCreateIssues(Long orgId, List<Issues> issues) {
+
+        if (issues == null || issues.isEmpty()) {
+            throw new IllegalArgumentException("At least one issue is required");
+        }
+
+        List<Issues> createdIssues = new java.util.ArrayList<>();
+
+        for (int i = 0; i < issues.size(); i++) {
+            Issues issue = issues.get(i);
+
+            if (issue == null) {
+                throw new IllegalArgumentException(
+                        "Issue at index " + i + " must not be null"
+                );
+            }
+
+            createdIssues.add(createIssue(orgId, issue));
+        }
+
+        return createdIssues;
+    }
+
     private Long extractId(Object obj) {
         if (obj == null) return null;
 
@@ -153,72 +181,72 @@ public class IssuesService {
         return null;
     }
 
-    public List<Issues> getIssuesByProjectAndSprint(Long projectId, Long sprintId) {
+    public List<Issues> getIssuesByProjectAndSprint(Long orgId, Long projectId, Long sprintId) {
         if (projectId == null || sprintId == null) {
             return List.of();
         }
-        return issuesRepository.findByProjectIdAndSprintId(projectId, sprintId);
+        return issuesRepository.findByOrgIdAndProjectIdAndSprintId(orgId, projectId, sprintId);
     }
 
     @Transactional(readOnly = true)
-    public List<Issues> getAllIssues() {
+    public List<Issues> getAllIssues(Long orgId) {
         return issuesRepository.findAll();
     }
 
     @Transactional(readOnly = true)
-    public Issues getIssueById(Long id) {
+    public Issues getIssueById(Long orgId, Long id) {
         return issuesRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Issue not found with ID: " + id));
     }
 
     @Transactional(readOnly = true)
-    public Issues getIssueByCode(String issueCode) {
-        return issuesRepository.findByIssueCode(issueCode)
+    public Issues getIssueByCode(Long orgId, String issueCode) {
+        return issuesRepository.findByOrgIdAndIssueCode(orgId, issueCode)
                 .orElseThrow(() -> new EntityNotFoundException("Issue not found with code: " + issueCode));
     }
 
     @Transactional(readOnly = true)
-    public List<Issues> getIssuesByProjectId(Long projectId) {
-        return issuesRepository.findByProjectId(projectId);
+    public List<Issues> getIssuesByProjectId(Long orgId, Long projectId) {
+        return issuesRepository.findByOrgIdAndProjectId(orgId, projectId);
     }
 
     @Transactional(readOnly = true)
-    public List<Issues> getIssuesBySprintId(Long sprintId) {
-        return issuesRepository.findBySprintId(sprintId);
+    public List<Issues> getIssuesBySprintId(Long orgId, Long sprintId) {
+        return issuesRepository.findByOrgIdAndSprintId(orgId, sprintId);
     }
 
     @Transactional(readOnly = true)
-    public List<Issues> getIssuesByAssigneeId(Long assigneeId) {
-        return issuesRepository.findByAssigneeId(assigneeId);
+    public List<Issues> getIssuesByAssigneeId(Long orgId, Long assigneeId) {
+        return issuesRepository.findByOrgIdAndAssigneeId(orgId, assigneeId);
     }
 
     @Transactional(readOnly = true)
-    public List<Issues> getIssuesByReporterId(Long reporterId) {
-        return issuesRepository.findByReporterId(reporterId);
+    public List<Issues> getIssuesByReporterId(Long orgId, Long reporterId) {
+        return issuesRepository.findByOrgIdAndReporterId(orgId, reporterId);
     }
 
     @Transactional(readOnly = true)
-    public List<Issues> getIssuesByStatus(String status) {
-        return issuesRepository.findByStatus(status);
+    public List<Issues> getIssuesByStatus(Long orgId, String status) {
+        return issuesRepository.findByOrgIdAndStatus(orgId, status);
     }
 
     @Transactional(readOnly = true)
-    public List<Issues> getIssuesByEpicId(Long epicId) {
-        return issuesRepository.findByEpicId(epicId);
+    public List<Issues> getIssuesByEpicId(Long orgId, Long epicId) {
+        return issuesRepository.findByEpicId(orgId, epicId);
     }
 
     @Transactional(readOnly = true)
-    public List<Issues> getIssuesByStoryId(Long storyId) {
-        return issuesRepository.findByStoryId(storyId);
+    public List<Issues> getIssuesByStoryId(Long orgId, Long storyId) {
+        return issuesRepository.findByStoryId(orgId, storyId);
     }
 
     @Transactional(readOnly = true)
-    public List<Issues> getIssuesByTaskId(Long taskId) {
-        return issuesRepository.findByTaskId(taskId);
+    public List<Issues> getIssuesByTaskId(Long orgId, Long taskId) {
+        return issuesRepository.findByTaskId(orgId, taskId);
     }
 
     @Transactional
-    public Issues updateIssue(Long id, Issues updatedIssue) {
+    public Issues updateIssue(Long orgId, Long id, Issues updatedIssue) {
         Issues existingIssue = issuesRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Issue not found with ID: " + id));
 
@@ -266,7 +294,7 @@ public class IssuesService {
         return issuesRepository.save(existingIssue);
     }
 
-    public void deleteIssue(Long id) {
+    public void deleteIssue(Long orgId, Long id) {
         if (!issuesRepository.existsById(id)) {
             throw new EntityNotFoundException("Issue not found with ID: " + id);
         }

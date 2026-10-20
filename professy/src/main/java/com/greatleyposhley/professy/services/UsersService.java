@@ -7,362 +7,137 @@ import com.greatleyposhley.professy.repositories.RolesRepository;
 import com.greatleyposhley.professy.repositories.UserAccountRepository;
 import com.greatleyposhley.professy.repositories.UsersRepository;
 import org.springframework.stereotype.Service;
-
-import java.util.ArrayList;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
+import java.util.Locale;
 
 @Service
+@Transactional
 public class UsersService {
-
     private final UsersRepository usersRepository;
     private final UserAccountRepository userAccountRepository;
     private final RolesRepository rolesRepository;
 
-    public UsersService(
-            UsersRepository usersRepository,
-            UserAccountRepository userAccountRepository,
-            RolesRepository rolesRepository) {
-
+    public UsersService(UsersRepository usersRepository, UserAccountRepository userAccountRepository,
+                        RolesRepository rolesRepository) {
         this.usersRepository = usersRepository;
         this.userAccountRepository = userAccountRepository;
         this.rolesRepository = rolesRepository;
     }
 
-
-    public List<Users> getAllUsers() {
-
-        List<Users> users = new ArrayList<>();
-
-        usersRepository.findAll().forEach(users::add);
-
-        return users;
+    @Transactional(readOnly = true)
+    public List<Users> getAllUsers(Long orgId) {
+        requireOrgId(orgId);
+        return usersRepository.findAllByOrgId(orgId);
     }
 
-    /*
-     * GET USER BY ID
-     */
-    public Users getUserById(Long id) {
-
-        if (id == null) {
-            throw new RuntimeException("User ID is required");
-        }
-
-        return usersRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException("User not found")
-                );
+    @Transactional(readOnly = true)
+    public Users getUserById(Long orgId, Long id) {
+        requireOrgId(orgId);
+        if (id == null) throw new IllegalArgumentException("User ID is required");
+        return usersRepository.findByOrgIdAndId(orgId, id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
-    /*
-     * GET USER BY EMAIL
-     */
-    public Users getUserByEmail(String email) {
-
-        if (email == null || email.trim().isEmpty()) {
-            throw new IllegalArgumentException(
-                    "Email address cannot be empty."
-            );
-        }
-
-        String normalizedEmail =
-                email.trim().toLowerCase();
-
-        return usersRepository.findByEmail(normalizedEmail)
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "User not found with email: " + email
-                        )
-                );
+    @Transactional(readOnly = true)
+    public Users getUserByEmail(Long orgId, String email) {
+        requireOrgId(orgId);
+        return usersRepository.findByOrgIdAndEmail(orgId, normalizeEmail(email))
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
-    /*
-     * CHECK EMAIL EXISTS
-     */
-    public boolean existsByEmail(String email) {
-
-        if (email == null || email.trim().isEmpty()) {
-            return false;
-        }
-
-        return usersRepository.existsByEmail(
-                email.trim().toLowerCase()
-        );
+    @Transactional(readOnly = true)
+    public boolean existsByEmail(Long orgId, String email) {
+        requireOrgId(orgId);
+        return email != null && !email.trim().isEmpty()
+                && usersRepository.existsByOrgIdAndEmail(orgId, normalizeEmail(email));
     }
 
-    /*
-     * CREATE USER
-     *
-     * userAccount is resolved from the authenticated JWT user.
-     * The frontend must NOT send userAccount.
-     */
-    public Users createUser(
-            Users user,
-            String authenticatedUserEmail) {
-
-        if (user == null) {
-            throw new RuntimeException(
-                    "User data is required"
-            );
+    public Users createUser(Long orgId, Users user, String authenticatedUserEmail) {
+        requireOrgId(orgId);
+        validateUser(user);
+        String email = normalizeEmail(user.getEmail());
+        if (usersRepository.existsByOrgIdAndEmail(orgId, email)) {
+            throw new DuplicateResourceException("User already exists with email: " + email);
         }
 
-        if (user.getName() == null ||
-                user.getName().trim().isEmpty()) {
+        UserAccount creator = userAccountRepository.findByOrgIdAndEmail(orgId, normalizeEmail(authenticatedUserEmail))
+                .orElseThrow(() -> new IllegalArgumentException("Authenticated user not found in this organization"));
+        Roles role = resolveRole(orgId, user.getRole());
 
-            throw new RuntimeException(
-                    "User name is required"
-            );
-        }
-
-        if (user.getEmail() == null ||
-                user.getEmail().trim().isEmpty()) {
-
-            throw new RuntimeException(
-                    "User email is required"
-            );
-        }
-
-        String email =
-                user.getEmail().trim().toLowerCase();
-
-        /*
-         * Don't allow duplicate application users.
-         */
-        if (usersRepository.existsByEmail(email)) {
-            throw new RuntimeException(
-                    "User already exists with email: " + email
-            );
-        }
-
-        /*
-         * Resolve authenticated UserAccount.
-         */
-        if (authenticatedUserEmail == null ||
-                authenticatedUserEmail.trim().isEmpty()) {
-
-            throw new RuntimeException(
-                    "Authenticated user is required"
-            );
-        }
-
-        UserAccount userAccount =
-                userAccountRepository
-                        .findByEmail(
-                                authenticatedUserEmail
-                                        .trim()
-                                        .toLowerCase()
-                        )
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Authenticated user not found"
-                                )
-                        );
-
-
-        if (user.getRole() == null) {
-            throw new RuntimeException(
-                    "Role is required"
-            );
-        }
-
-        Roles role =
-                rolesRepository.findById(user.getRole().getId())
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Role not found"
-                                )
-                        );
-
-        /*
-         * Set normalized values.
-         */
+        // Do not trust client-supplied ID, orgId, or userAccount.
+        user.setId(null);
+        user.setOrgId(orgId);
         user.setName(user.getName().trim());
         user.setEmail(email);
-
-        /*
-         * IMPORTANT:
-         * Never accept UserAccount from Angular.
-         */
-        user.setUserAccount(userAccount);
-
-        /*
-         * Associate selected role.
-         */
+        user.setUserAccount(creator);
         user.setRole(role);
-
         return usersRepository.save(user);
     }
 
-    /*
-     * UPDATE USER
-     */
-    public Users updateUser(
-            Long id,
-            Users user) {
+    public Users updateUser(Long orgId, Long id, Users user) {
+        requireOrgId(orgId);
+        if (id == null) throw new IllegalArgumentException("User ID is required");
+        validateUser(user);
+        Users existing = usersRepository.findByOrgIdAndId(orgId, id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        String email = normalizeEmail(user.getEmail());
 
-        if (id == null) {
-            throw new RuntimeException(
-                    "User ID is required"
-            );
+        if (!existing.getEmail().equalsIgnoreCase(email)
+                && usersRepository.existsByOrgIdAndEmailAndIdNot(orgId, email, id)) {
+            throw new DuplicateResourceException("Another user already exists with email: " + email);
         }
 
-        if (user == null) {
-            throw new RuntimeException(
-                    "User data is required"
-            );
-        }
-
-        Users existingUser =
-                usersRepository.findById(id)
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "User not found"
-                                )
-                        );
-
-        if (user.getName() == null ||
-                user.getName().trim().isEmpty()) {
-
-            throw new RuntimeException(
-                    "User name is required"
-            );
-        }
-
-        if (user.getEmail() == null ||
-                user.getEmail().trim().isEmpty()) {
-
-            throw new RuntimeException(
-                    "User email is required"
-            );
-        }
-
-        String email =
-                user.getEmail().trim().toLowerCase();
-
-        /*
-         * Check duplicate email only when email changed.
-         */
-        if (!existingUser.getEmail()
-                .equalsIgnoreCase(email)
-                && usersRepository.existsByEmail(email)) {
-
-            throw new RuntimeException(
-                    "Another user already exists with email: "
-                            + email
-            );
-        }
-
-        /*
-         * Basic information.
-         */
-        existingUser.setName(
-                user.getName().trim()
-        );
-
-        existingUser.setEmail(email);
-
-        /*
-         * Profile picture.
-         */
-        if (user.getProfilePictureUrl() != null) {
-            existingUser.setProfilePictureUrl(
-                    user.getProfilePictureUrl()
-            );
-        }
-
-        /*
-         * Employee information.
-         */
-        existingUser.setEmployeeIdPrefix(
-                user.getEmployeeIdPrefix()
-        );
-
-        existingUser.setEmployeeIdNumber(
-                user.getEmployeeIdNumber()
-        );
-
-        /*
-         * Location.
-         */
-        existingUser.setLocationCountry(
-                user.getLocationCountry()
-        );
-
-        existingUser.setLocationState(
-                user.getLocationState()
-        );
-
-        existingUser.setLocationCity(
-                user.getLocationCity()
-        );
-
-        existingUser.setLocationWorkModel(
-                user.getLocationWorkModel()
-        );
-
-        existingUser.setLocationDeskCode(
-                user.getLocationDeskCode()
-        );
-
-        /*
-         * Active / inactive state.
-         */
-        existingUser.setIsActive(
-                user.getIsActive()
-        );
-
-        /*
-         * Manager.
-         */
-        existingUser.setManager(
-                user.getManager()
-        );
-
-        /*
-         * Role.
-         */
-        if (user.getRole() != null) {
-
-            Roles role =
-                    rolesRepository.findById(
-                            user.getRole().getId()
-                    ).orElseThrow(() ->
-                            new RuntimeException(
-                                    "Role not found"
-                            )
-                    );
-
-            existingUser.setRole(role);
-        }
-
-        /*
-         * IMPORTANT:
-         *
-         * Do NOT replace existingUser.userAccount here.
-         *
-         * It belongs to the authenticated account
-         * that created the application user.
-         */
-
-        return usersRepository.save(existingUser);
+        existing.setName(user.getName().trim());
+        existing.setEmail(email);
+        if (user.getProfilePictureUrl() != null) existing.setProfilePictureUrl(user.getProfilePictureUrl());
+        existing.setEmployeeIdPrefix(user.getEmployeeIdPrefix());
+        existing.setEmployeeIdNumber(user.getEmployeeIdNumber());
+        existing.setLocationCountry(user.getLocationCountry());
+        existing.setLocationState(user.getLocationState());
+        existing.setLocationCity(user.getLocationCity());
+        existing.setLocationWorkModel(user.getLocationWorkModel());
+        existing.setLocationDeskCode(user.getLocationDeskCode());
+        existing.setIsActive(user.getIsActive());
+        existing.setManager(user.getManager());
+        if (user.getRole() != null) existing.setRole(resolveRole(orgId, user.getRole()));
+        // Preserve existing orgId and userAccount; never overwrite from request JSON.
+        return usersRepository.save(existing);
     }
 
-    /*
-     * DELETE USER
-     */
-    public void deleteUser(Long id) {
+    public void deleteUser(Long orgId, Long id) {
+        requireOrgId(orgId);
+        if (id == null) throw new IllegalArgumentException("User ID is required");
+        Users existing = usersRepository.findByOrgIdAndId(orgId, id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        usersRepository.delete(existing);
+    }
 
-        if (id == null) {
-            throw new RuntimeException(
-                    "User ID is required"
-            );
-        }
+    private Roles resolveRole(Long orgId, Roles requested) {
+        if (requested == null || requested.getId() == null) throw new IllegalArgumentException("Role is required");
+        return rolesRepository.findByOrgIdAndId(orgId, requested.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Role not found in this organization"));
+    }
 
-        if (!usersRepository.existsById(id)) {
-            throw new RuntimeException(
-                    "User not found"
-            );
-        }
+    private void validateUser(Users user) {
+        if (user == null) throw new IllegalArgumentException("User data is required");
+        if (user.getName() == null || user.getName().trim().isEmpty()) throw new IllegalArgumentException("User name is required");
+        if (user.getEmail() == null || user.getEmail().trim().isEmpty()) throw new IllegalArgumentException("User email is required");
+    }
 
-        usersRepository.deleteById(id);
+    private String normalizeEmail(String email) {
+        if (email == null || email.trim().isEmpty()) throw new IllegalArgumentException("Email address cannot be empty");
+        return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private void requireOrgId(Long orgId) {
+        if (orgId == null) throw new IllegalArgumentException("Organization context is required");
+    }
+
+    public static class ResourceNotFoundException extends RuntimeException {
+        public ResourceNotFoundException(String message) { super(message); }
+    }
+    public static class DuplicateResourceException extends RuntimeException {
+        public DuplicateResourceException(String message) { super(message); }
     }
 }

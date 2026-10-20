@@ -13,18 +13,28 @@ import java.util.Map;
 @Repository
 public interface ProjectsRepository extends CrudRepository<Projects, Long> {
 
-    @Query(value = "SELECT * FROM projects WHERE user_id = :userId ORDER BY created_at DESC", nativeQuery = true)
-    List<Map<String, Object>> findProjectRowsByUserId(@Param("userId") Long userId);
+    @Query(value = "SELECT * FROM projects WHERE org_id = :orgId AND user_id = :userId ORDER BY created_at DESC", nativeQuery = true)
+    List<Map<String, Object>> findProjectRowsByUserId(
+            @Param("orgId") Long orgId,
+            @Param("userId") Long userId
+    );
 
-    @Query(value = "SELECT * FROM projects WHERE product_id = :productId ORDER BY created_at DESC", nativeQuery = true)
-    List<Map<String, Object>> findProjectRowsByProductId(@Param("productId") Long productId);
+    @Query(value = "SELECT * FROM projects WHERE org_id = :orgId AND product_id = :productId ORDER BY created_at DESC", nativeQuery = true)
+    List<Map<String, Object>> findProjectRowsByProductId(
+            @Param("orgId") Long orgId,
+            @Param("productId") Long productId
+    );
 
-    @Query(value = "SELECT * FROM projects WHERE id = :projectId", nativeQuery = true)
-    Map<String, Object> findProjectRowById(@Param("projectId") Long projectId);
+    @Query(value = "SELECT * FROM projects WHERE org_id = :orgId AND id = :projectId", nativeQuery = true)
+    Map<String, Object> findProjectRowById(
+            @Param("orgId") Long orgId,
+            @Param("projectId") Long projectId
+    );
 
     @Modifying
     @Query(value = """
             INSERT INTO projects (
+                org_id,
                 user_id,
                 product_id,
                 project_code,
@@ -40,6 +50,7 @@ public interface ProjectsRepository extends CrudRepository<Projects, Long> {
                 computed_total_duration_weeks
             )
             VALUES (
+                :orgId,
                 :userId,
                 :productId,
                 :projectCode,
@@ -56,6 +67,7 @@ public interface ProjectsRepository extends CrudRepository<Projects, Long> {
             )
             """, nativeQuery = true)
     int insertProject(
+            @Param("orgId") Long orgId,
             @Param("userId") Long userId,
             @Param("productId") Long productId,
             @Param("projectCode") String projectCode,
@@ -91,8 +103,10 @@ public interface ProjectsRepository extends CrudRepository<Projects, Long> {
                 computed_sprint_count = :computedSprintCount,
                 computed_total_duration_weeks = :computedTotalDurationWeeks
             WHERE id = :projectId
+              AND org_id = :orgId
             """, nativeQuery = true)
     int updateProjectRow(
+            @Param("orgId") Long orgId,
             @Param("projectId") Long projectId,
             @Param("productId") Long productId,
             @Param("projectCode") String projectCode,
@@ -110,7 +124,9 @@ public interface ProjectsRepository extends CrudRepository<Projects, Long> {
     );
 
     @Modifying
-    @Query(value = "DELETE FROM projects WHERE id = :projectId", nativeQuery = true)
-    int deleteProjectRow(@Param("projectId") Long projectId);
-
+    @Query(value = "DELETE FROM projects WHERE id = :projectId AND org_id = :orgId", nativeQuery = true)
+    int deleteProjectRow(
+            @Param("orgId") Long orgId,
+            @Param("projectId") Long projectId
+    );
 }

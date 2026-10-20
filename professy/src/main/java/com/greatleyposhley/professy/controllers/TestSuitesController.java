@@ -2,9 +2,11 @@ package com.greatleyposhley.professy.controllers;
 
 import com.greatleyposhley.professy.entities.TestSuites;
 import com.greatleyposhley.professy.services.TestSuitesService;
+import com.greatleyposhley.professy.repositories.UserAccountRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -15,9 +17,12 @@ import java.util.List;
 public class TestSuitesController {
 
     private final TestSuitesService testSuitesService;
+    private final UserAccountRepository userAccountRepository;
 
     @Autowired
-    public TestSuitesController(TestSuitesService testSuitesService) {
+    public TestSuitesController(TestSuitesService testSuitesService,
+                                UserAccountRepository userAccountRepository) {
+        this.userAccountRepository = userAccountRepository;
         this.testSuitesService = testSuitesService;
     }
 
@@ -27,10 +32,11 @@ public class TestSuitesController {
     // ============================================================
 
     @GetMapping
-    public ResponseEntity<List<TestSuites>> getAllTestSuites() {
+    public ResponseEntity<List<TestSuites>> getAllTestSuites(Authentication authentication) {
+        Long orgId = getOrgId(authentication);
 
         return ResponseEntity.ok(
-                testSuitesService.getAllTestSuites()
+                testSuitesService.getAllTestSuites(orgId)
         );
     }
 
@@ -40,12 +46,13 @@ public class TestSuitesController {
     // ============================================================
 
     @GetMapping("/{id}")
-    public ResponseEntity<TestSuites> getTestSuiteById(
-            @PathVariable Long id
-    ) {
+    public ResponseEntity<TestSuites> getTestSuiteById(@PathVariable Long id,
+                                                       Authentication authentication) {
+        Long orgId = getOrgId(authentication);
 
         return ResponseEntity.ok(
-                testSuitesService.getTestSuiteById(id)
+                testSuitesService.getTestSuiteById(orgId,
+                        id)
         );
     }
 
@@ -55,12 +62,13 @@ public class TestSuitesController {
     // ============================================================
 
     @GetMapping("/test-plan/{testPlanId}")
-    public ResponseEntity<List<TestSuites>> getTestSuitesByTestPlanId(
-            @PathVariable Long testPlanId
-    ) {
+    public ResponseEntity<List<TestSuites>> getTestSuitesByTestPlanId(@PathVariable Long testPlanId,
+                                                                      Authentication authentication) {
+        Long orgId = getOrgId(authentication);
 
         return ResponseEntity.ok(
-                testSuitesService.getTestSuitesByTestPlanId(testPlanId)
+                testSuitesService.getTestSuitesByTestPlanId(orgId,
+                        testPlanId)
         );
     }
 
@@ -70,12 +78,13 @@ public class TestSuitesController {
     // ============================================================
 
     @GetMapping("/project/{projectId}")
-    public ResponseEntity<List<TestSuites>> getTestSuitesByProjectId(
-            @PathVariable Long projectId
-    ) {
+    public ResponseEntity<List<TestSuites>> getTestSuitesByProjectId(@PathVariable Long projectId,
+                                                                     Authentication authentication) {
+        Long orgId = getOrgId(authentication);
 
         return ResponseEntity.ok(
-                testSuitesService.getTestSuitesByProjectId(projectId)
+                testSuitesService.getTestSuitesByProjectId(orgId,
+                        projectId)
         );
     }
 
@@ -85,12 +94,13 @@ public class TestSuitesController {
     // ============================================================
 
     @PostMapping
-    public ResponseEntity<TestSuites> createTestSuite(
-            @RequestBody TestSuites testSuite
-    ) {
+    public ResponseEntity<TestSuites> createTestSuite(@RequestBody TestSuites testSuite,
+                                                      Authentication authentication) {
+        Long orgId = getOrgId(authentication);
 
         TestSuites saved =
-                testSuitesService.saveTestSuite(testSuite);
+                testSuitesService.saveTestSuite(orgId,
+                        testSuite);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -103,15 +113,16 @@ public class TestSuitesController {
     // ============================================================
 
     @PutMapping("/{id}")
-    public ResponseEntity<TestSuites> updateTestSuite(
-            @PathVariable Long id,
-            @RequestBody TestSuites testSuite
-    ) {
+    public ResponseEntity<TestSuites> updateTestSuite(@PathVariable Long id,
+                                                      @RequestBody TestSuites testSuite,
+                                                      Authentication authentication) {
+        Long orgId = getOrgId(authentication);
 
         testSuite.setId(id);
 
         TestSuites updated =
-                testSuitesService.saveTestSuite(testSuite);
+                testSuitesService.saveTestSuite(orgId,
+                        testSuite);
 
         return ResponseEntity.ok(updated);
     }
@@ -122,13 +133,34 @@ public class TestSuitesController {
     // ============================================================
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTestSuite(
-            @PathVariable Long id
-    ) {
+    public ResponseEntity<Void> deleteTestSuite(@PathVariable Long id,
+                                                Authentication authentication) {
+        Long orgId = getOrgId(authentication);
 
-        testSuitesService.deleteTestSuite(id);
+        testSuitesService.deleteTestSuite(orgId,
+                id);
 
         return ResponseEntity.noContent().build();
+    }
+
+
+    private Long getOrgId(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new IllegalArgumentException("Authentication required");
+        }
+
+        String email = authentication.getName();
+
+        if (email == null || email.trim().isEmpty()) {
+            throw new IllegalArgumentException("Authenticated user is required");
+        }
+
+        return userAccountRepository
+                .findByEmail(email.trim().toLowerCase())
+                .map(account -> account.getOrgId())
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Authenticated user not found")
+                );
     }
 }
 

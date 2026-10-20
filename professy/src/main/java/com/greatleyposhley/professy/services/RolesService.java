@@ -1,3 +1,4 @@
+
 package com.greatleyposhley.professy.services;
 
 import com.greatleyposhley.professy.entities.Roles;
@@ -5,10 +6,12 @@ import com.greatleyposhley.professy.entities.UserAccount;
 import com.greatleyposhley.professy.repositories.RolesRepository;
 import com.greatleyposhley.professy.repositories.UserAccountRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
+@Transactional
 public class RolesService {
 
     private final RolesRepository rolesRepository;
@@ -17,28 +20,28 @@ public class RolesService {
     public RolesService(
             RolesRepository rolesRepository,
             UserAccountRepository userAccountRepository) {
-
         this.rolesRepository = rolesRepository;
         this.userAccountRepository = userAccountRepository;
     }
 
-    public List<Roles> getAllRoles() {
-
-        return rolesRepository.findAll();
+    @Transactional(readOnly = true)
+    public List<Roles> getAllRoles(Long orgId) {
+        return rolesRepository.findAllByOrgId(orgId);
     }
 
-    public Roles getRoleById(Long id) {
-
-        return rolesRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException("Role not found")
-                );
+    @Transactional(readOnly = true)
+    public Roles getRoleById(Long orgId, Long id) {
+        return rolesRepository.findByOrgIdAndId(orgId, id)
+                .orElseThrow(() -> new RuntimeException("Role not found"));
     }
 
-    public Roles createRole(Roles role, String userEmail) {
-
+    public Roles createRole(Long orgId, Roles role, String userEmail) {
         if (role == null) {
             throw new RuntimeException("Role data is required");
+        }
+
+        if (orgId == null) {
+            throw new RuntimeException("Organisation is required");
         }
 
         if (role.getName() == null || role.getName().isBlank()) {
@@ -47,7 +50,7 @@ public class RolesService {
 
         String roleName = role.getName().trim();
 
-        if (rolesRepository.existsByName(roleName)) {
+        if (rolesRepository.existsByOrgIdAndName(orgId, roleName)) {
             throw new RuntimeException("Role already exists");
         }
 
@@ -56,23 +59,19 @@ public class RolesService {
         }
 
         UserAccount userAccount = userAccountRepository
-                .findByEmail(userEmail)
+                .findByOrgIdAndEmail(orgId, userEmail.trim().toLowerCase())
                 .orElseThrow(() ->
-                        new RuntimeException("Authenticated user not found")
-                );
+                        new RuntimeException("Authenticated user not found"));
 
-        /*
-         * The userAccount must NOT come from the frontend.
-         * It is taken from the authenticated JWT user.
-         */
+        role.setId(null);
+        role.setOrgId(orgId);
         role.setName(roleName);
         role.setUserAccount(userAccount);
 
         return rolesRepository.save(role);
     }
 
-    public Roles updateRole(Long id, Roles role) {
-
+    public Roles updateRole(Long orgId, Long id, Roles role) {
         if (role == null) {
             throw new RuntimeException("Role data is required");
         }
@@ -81,16 +80,14 @@ public class RolesService {
             throw new RuntimeException("Role name is required");
         }
 
-        Roles existingRole = rolesRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException("Role not found")
-                );
+        Roles existingRole = rolesRepository.findByOrgIdAndId(orgId, id)
+                .orElseThrow(() -> new RuntimeException("Role not found"));
 
         String roleName = role.getName().trim();
 
-        if (!existingRole.getName().equalsIgnoreCase(roleName)
-                && rolesRepository.existsByName(roleName)) {
+        boolean duplicate = rolesRepository.existsByOrgIdAndName(orgId, roleName);
 
+        if (duplicate && !existingRole.getName().equalsIgnoreCase(roleName)) {
             throw new RuntimeException("Role already exists");
         }
 
@@ -100,20 +97,14 @@ public class RolesService {
             existingRole.setDescription(role.getDescription());
         }
 
-        /*
-         * Do NOT replace userAccount during update.
-         *
-         * The original owner/user association remains unchanged.
-         */
+        // Preserve orgId and userAccount from the existing database record.
         return rolesRepository.save(existingRole);
     }
 
-    public void deleteRole(Long id) {
+    public void deleteRole(Long orgId, Long id) {
+        Roles existingRole = rolesRepository.findByOrgIdAndId(orgId, id)
+                .orElseThrow(() -> new RuntimeException("Role not found"));
 
-        if (!rolesRepository.existsById(id)) {
-            throw new RuntimeException("Role not found");
-        }
-
-        rolesRepository.deleteById(id);
+        rolesRepository.delete(existingRole);
     }
 }
