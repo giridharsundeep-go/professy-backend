@@ -1,5 +1,6 @@
 package com.greatleyposhley.professy.entities;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -14,8 +15,21 @@ public class DocPageVersion {
     @Column(name = "org_id", nullable = false)
     private Long orgId;
 
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "userId", nullable = false)
+    private UserAccount userAccount;
+
+    @Transient
+    @JsonProperty("user_id")
+    private Long requestedUserId;
+
+    public Long getRequestedUserId() {
+        return requestedUserId;
+    }
+
+    public void setRequestedUserId(Long requestedUserId) {
+        this.requestedUserId = requestedUserId;
+    }
 
     @Column(name = "page_id", nullable = false)
     private Long pageId;
@@ -63,12 +77,12 @@ public class DocPageVersion {
         this.orgId = orgId;
     }
 
-    public Long getUserId() {
-        return userId;
+    public UserAccount getUserId() {
+        return userAccount;
     }
 
-    public void setUserId(Long userId) {
-        this.userId = userId;
+    public void setUserId(UserAccount userId) {
+        this.userAccount = userId;
     }
 
     public Long getPageId() {

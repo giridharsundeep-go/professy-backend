@@ -1,5 +1,6 @@
 package com.greatleyposhley.professy.entities;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -14,8 +15,21 @@ public class DocSpace {
     @Column(name = "org_id", nullable = false)
     private Long orgId;
 
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "userId", nullable = false)
+    private UserAccount userAccount;
+
+    @Transient
+    @JsonProperty("user_id")
+    private Long requestedUserId;
+
+    public Long getRequestedUserId() {
+        return requestedUserId;
+    }
+
+    public void setRequestedUserId(Long requestedUserId) {
+        this.requestedUserId = requestedUserId;
+    }
 
     @Column(nullable = false, length = 150)
     private String name;
@@ -65,12 +79,12 @@ public class DocSpace {
         this.orgId = orgId;
     }
 
-    public Long getUserId() {
-        return userId;
+    public UserAccount getUserAccount() {
+        return userAccount;
     }
 
-    public void setUserId(Long userId) {
-        this.userId = userId;
+    public void setUserAccount(UserAccount userAccount) {
+        this.userAccount = userAccount;
     }
 
     public String getName() {
@@ -143,5 +157,23 @@ public class DocSpace {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    @Override
+    public String toString() {
+        return "DocSpace{" +
+                "id=" + id +
+                ", orgId=" + orgId +
+                ", userAccount=" + userAccount +
+                ", name='" + name + '\'' +
+                ", slug='" + slug + '\'' +
+                ", description='" + description + '\'' +
+                ", visibility=" + visibility +
+                ", status=" + status +
+                ", createdBy=" + createdBy +
+                ", updatedBy=" + updatedBy +
+                ", createdAt=" + createdAt +
+                ", updatedAt=" + updatedAt +
+                '}';
     }
 }

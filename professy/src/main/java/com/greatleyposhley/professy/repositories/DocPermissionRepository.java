@@ -5,9 +5,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 import java.util.Optional;
 
-public interface DocPermissionRepository
-        extends JpaRepository<DocPermission, Long> {
+public interface DocPermissionRepository extends JpaRepository<DocPermission, Long> {
+    List<DocPermission> findAllByOrgId(Long orgId);
     List<DocPermission> findByOrgIdAndSpaceId(Long orgId, Long spaceId);
-
     Optional<DocPermission> findByIdAndOrgId(Long id, Long orgId);
+    Optional<DocPermission> findByOrgIdAndId(Long orgId, Long id);
 }

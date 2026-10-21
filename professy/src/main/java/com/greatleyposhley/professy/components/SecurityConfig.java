@@ -64,7 +64,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/docs/api-versions/**").authenticated()
                         .requestMatchers("/api/docs/permissions/**").authenticated()
                         .requestMatchers("/api/docs/audit-logs/**").authenticated()
-
+                        .requestMatchers("/api/docs/spaces/*/folders").authenticated()
+                        .requestMatchers("/api/docs/spaces/*/folders").authenticated()
+                        .requestMatchers("/api/docs/spaces/*/folders/**").authenticated()
+                        .requestMatchers("/api/docs/folders/**").authenticated()
                         // Protect all other endpoints by default
                         .anyRequest().authenticated()
                 )

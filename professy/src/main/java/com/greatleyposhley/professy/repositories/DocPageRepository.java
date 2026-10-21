@@ -6,8 +6,9 @@ import java.util.List;
 import java.util.Optional;
 
 public interface DocPageRepository extends JpaRepository<DocPage, Long> {
-    List<DocPage> findByOrgIdAndSpaceIdOrderBySortOrderAsc(
-            Long orgId, Long spaceId);
+    List<DocPage> findAllByOrgId(Long orgId);
+    List<DocPage> findByOrgIdAndSpaceIdOrderBySortOrderAsc(Long orgId, Long spaceId);
     Optional<DocPage> findByIdAndOrgId(Long id, Long orgId);
+    Optional<DocPage> findByOrgIdAndId(Long orgId, Long id);
     List<DocPage> findByOrgIdAndParentPageId(Long orgId, Long parentPageId);
 }
