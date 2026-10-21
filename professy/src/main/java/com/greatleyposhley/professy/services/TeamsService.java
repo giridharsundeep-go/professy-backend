@@ -3,11 +3,9 @@ package com.greatleyposhley.professy.services;
 import com.greatleyposhley.professy.entities.TeamMembers;
 import com.greatleyposhley.professy.entities.Teams;
 import com.greatleyposhley.professy.entities.UserAccount;
-import com.greatleyposhley.professy.entities.Users;
 import com.greatleyposhley.professy.repositories.TeamMembersRepository;
 import com.greatleyposhley.professy.repositories.TeamsRepository;
 import com.greatleyposhley.professy.repositories.UserAccountRepository;
-import com.greatleyposhley.professy.repositories.UsersRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,13 +20,13 @@ public class TeamsService {
     private final TeamsRepository teamsRepository;
     private final TeamMembersRepository teamMembersRepository;
     private final UserAccountRepository userAccountRepository;
-    private final UsersRepository usersRepository;
+    private final UserAccountRepository usersRepository;
 
     public TeamsService(
             TeamsRepository teamsRepository,
             TeamMembersRepository teamMembersRepository,
             UserAccountRepository userAccountRepository,
-            UsersRepository usersRepository) {
+            UserAccountRepository usersRepository) {
 
         this.teamsRepository = teamsRepository;
         this.teamMembersRepository = teamMembersRepository;
@@ -268,7 +266,7 @@ public class TeamsService {
                 continue;
             }
 
-            Users user =
+            UserAccount user =
                     usersRepository
                             .findById(userId)
                             .orElseThrow(() ->
@@ -336,7 +334,7 @@ public class TeamsService {
 
         for (TeamMembers teamMember : teamMembers) {
 
-            Users user =
+            UserAccount user =
                     teamMember.getUser();
 
             if (user == null) {
@@ -353,7 +351,7 @@ public class TeamsService {
 
             member.put(
                     "name",
-                    user.getName()
+                    user.getFirstName()
             );
 
             member.put(

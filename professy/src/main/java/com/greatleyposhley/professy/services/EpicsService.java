@@ -4,12 +4,11 @@ import com.greatleyposhley.professy.entities.Epics;
 import com.greatleyposhley.professy.entities.Projects;
 import com.greatleyposhley.professy.entities.Sprints;
 import com.greatleyposhley.professy.entities.UserAccount;
-import com.greatleyposhley.professy.entities.Users;
 import com.greatleyposhley.professy.repositories.EpicsRepository;
 import com.greatleyposhley.professy.repositories.ProjectsRepository;
 import com.greatleyposhley.professy.repositories.SprintsRepository;
 import com.greatleyposhley.professy.repositories.UserAccountRepository;
-import com.greatleyposhley.professy.repositories.UsersRepository;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -24,18 +23,18 @@ public class EpicsService {
     private final ProjectsRepository projectsRepository;
     private final SprintsRepository sprintsRepository;
     private final UserAccountRepository userAccountRepository;
-    private final UsersRepository usersRepository;
+    private final UserAccountRepository UserAccountRepository;
 
     public EpicsService(EpicsRepository epicsRepository,
                         ProjectsRepository projectsRepository,
                         SprintsRepository sprintsRepository,
                         UserAccountRepository userAccountRepository,
-                        UsersRepository usersRepository) {
+                        UserAccountRepository UserAccountRepository) {
         this.epicsRepository = epicsRepository;
         this.projectsRepository = projectsRepository;
         this.sprintsRepository = sprintsRepository;
         this.userAccountRepository = userAccountRepository;
-        this.usersRepository = usersRepository;
+        this.UserAccountRepository = UserAccountRepository;
     }
 
     @Transactional
@@ -75,10 +74,10 @@ public class EpicsService {
                         ? creatorUserId
                         : userAccount.getId();
 
-        Users creator = getUser(orgId, effectiveCreatorId);
+        UserAccount creator = getUser(orgId, effectiveCreatorId);
         Sprints sprint = getOptionalSprint(orgId, sprintId);
-        Users assignee = getOptionalUser(orgId, assigneeUserId);
-        Users reporter = getOptionalUser(orgId, reporterUserId);
+        UserAccount assignee = getOptionalUser(orgId, assigneeUserId);
+        UserAccount reporter = getOptionalUser(orgId, reporterUserId);
 
         if (status == null || status.isBlank()) {
             status = "BACKLOG";
@@ -277,7 +276,7 @@ public class EpicsService {
                 .orElseThrow(() -> new IllegalArgumentException("Sprint not found"));
     }
 
-    private Users getOptionalUser(Long orgId, Long userId) {
+    private UserAccount getOptionalUser(Long orgId, Long userId) {
         if (userId == null) {
             return null;
         }
@@ -285,12 +284,12 @@ public class EpicsService {
         return getUser(orgId, userId);
     }
 
-    private Users getUser(Long orgId, Long userId) {
+    private UserAccount getUser(Long orgId, Long userId) {
         if (userId == null || userId <= 0) {
             throw new IllegalArgumentException("Invalid user id");
         }
 
-        return usersRepository.findById(userId)
+        return UserAccountRepository.findByOrgIdAndId(orgId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
     }
 

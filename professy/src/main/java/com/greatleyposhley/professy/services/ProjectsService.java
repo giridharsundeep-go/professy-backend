@@ -74,7 +74,7 @@ public class ProjectsService {
 
         response.put("sprints", copyRowsForSprints(sprintRows));
 
-        response.put("teams", getProjectTeamsAndUsers(orgId, projectId));
+        response.put("teams", getProjectTeamsAndUserAccount(orgId, projectId));
 
         response.put(
                 "associatedTeamIds",
@@ -195,7 +195,7 @@ public class ProjectsService {
         return result;
     }
 
-    private List<Map<String, Object>> getProjectTeamsAndUsers(Long orgId, Long projectId) {
+    private List<Map<String, Object>> getProjectTeamsAndUserAccount(Long orgId, Long projectId) {
         List<Long> teamIds = projectTeamsRepository.findTeamIdsByProjectId(projectId);
         List<Map<String, Object>> teams = new ArrayList<>();
 
@@ -214,14 +214,14 @@ public class ProjectsService {
             List<TeamMembers> teamMembers = teamMembersRepository.findAllByTeam_Id(teamId);
 
             for (TeamMembers teamMember : teamMembers) {
-                Users user = teamMember.getUser();
+                UserAccount user = teamMember.getUser();
                 if (user == null) {
                     continue;
                 }
 
                 Map<String, Object> userData = new LinkedHashMap<>();
                 userData.put("id", user.getId());
-                userData.put("name", user.getName());
+                userData.put("name", user.getFirstName());
                 userData.put("email", user.getEmail());
                 userData.put("role", safeRole(user));
                 members.add(userData);
@@ -234,9 +234,9 @@ public class ProjectsService {
         return teams;
     }
 
-    private String safeRole(Users user) {
+    private String safeRole(UserAccount user) {
         try {
-            return user.getRole() == null ? "TEAM_MEMBER" : String.valueOf(user.getRole());
+            return user.getRoleId() == null ? "TEAM_MEMBER" : String.valueOf(user.getRoleId());
         } catch (Exception ignored) {
             return "TEAM_MEMBER";
         }

@@ -18,7 +18,7 @@ public class TestcasesService {
     private final EpicsRepository epicsRepository;
     private final StoriesRepository storiesRepository;
     private final TasksRepository tasksRepository;
-    private final UsersRepository usersRepository;
+    private final UserAccountRepository usersRepository;
     private final TestSuitesRepository testSuitesRepository;
 
 
@@ -28,7 +28,7 @@ public class TestcasesService {
                             EpicsRepository epicsRepository,
                             StoriesRepository storiesRepository,
                             TasksRepository tasksRepository,
-                            UsersRepository usersRepository,
+                            UserAccountRepository usersRepository,
                             TestSuitesRepository testSuitesRepository) {
         this.testcasesRepository = testcasesRepository;
         this.projectsRepository = projectsRepository;
@@ -438,7 +438,7 @@ public class TestcasesService {
 
             // User / Assignee (Optional)
             if (updatedTestCase.getUser() != null && updatedTestCase.getUser().getId() != null && updatedTestCase.getUser().getId() > 0) {
-                Users user = usersRepository.findById(updatedTestCase.getUser().getId()).orElse(null);
+                UserAccount user = usersRepository.findById(updatedTestCase.getUser().getId()).orElse(null);
                 existingTestCase.setUser(user);
             } else {
                 existingTestCase.setUser(null);
@@ -446,7 +446,7 @@ public class TestcasesService {
 
             // Creator (Optional)
             if (updatedTestCase.getCreator() != null && updatedTestCase.getCreator().getId() != null && updatedTestCase.getCreator().getId() > 0) {
-                Users creator = usersRepository.findById(updatedTestCase.getCreator().getId()).orElse(null);
+                UserAccount creator = usersRepository.findById(updatedTestCase.getCreator().getId()).orElse(null);
                 existingTestCase.setCreator(creator);
             } else {
                 existingTestCase.setCreator(null);

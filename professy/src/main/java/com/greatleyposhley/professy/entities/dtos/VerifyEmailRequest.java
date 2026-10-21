@@ -1,4 +1,4 @@
-package com.greatleyposhley.professy.dtos;
+package com.greatleyposhley.professy.entities.dtos;
 
 public class VerifyEmailRequest {
     private String orgSlug;

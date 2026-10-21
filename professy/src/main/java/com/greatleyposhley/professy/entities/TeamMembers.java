@@ -31,14 +31,14 @@ public class TeamMembers {
     // Foreign Key to users table
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    private Users user;
+    private UserAccount user;
 
     // --- Constructors ---
 
     public TeamMembers() {
     }
 
-    public TeamMembers(Teams team, Users user) {
+    public TeamMembers(Teams team, UserAccount user) {
         this.team = team;
         this.user = user;
     }
@@ -61,11 +61,11 @@ public class TeamMembers {
         this.team = team;
     }
 
-    public Users getUser() {
+    public UserAccount getUser() {
         return user;
     }
 
-    public void setUser(Users user) {
+    public void setUser(UserAccount user) {
         this.user = user;
     }
 }

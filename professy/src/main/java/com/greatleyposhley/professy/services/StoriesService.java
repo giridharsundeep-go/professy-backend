@@ -5,13 +5,12 @@ import com.greatleyposhley.professy.entities.Projects;
 import com.greatleyposhley.professy.entities.Sprints;
 import com.greatleyposhley.professy.entities.Stories;
 import com.greatleyposhley.professy.entities.UserAccount;
-import com.greatleyposhley.professy.entities.Users;
 import com.greatleyposhley.professy.repositories.EpicsRepository;
 import com.greatleyposhley.professy.repositories.ProjectsRepository;
 import com.greatleyposhley.professy.repositories.SprintsRepository;
 import com.greatleyposhley.professy.repositories.StoriesRepository;
 import com.greatleyposhley.professy.repositories.UserAccountRepository;
-import com.greatleyposhley.professy.repositories.UsersRepository;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -27,14 +26,14 @@ public class StoriesService {
     private final EpicsRepository epicsRepository;
     private final SprintsRepository sprintsRepository;
     private final UserAccountRepository userAccountRepository;
-    private final UsersRepository usersRepository;
+    private final UserAccountRepository usersRepository;
 
     public StoriesService(StoriesRepository storiesRepository,
                           ProjectsRepository projectsRepository,
                           EpicsRepository epicsRepository,
                           SprintsRepository sprintsRepository,
                           UserAccountRepository userAccountRepository,
-                          UsersRepository usersRepository) {
+                          UserAccountRepository usersRepository) {
         this.storiesRepository = storiesRepository;
         this.projectsRepository = projectsRepository;
         this.epicsRepository = epicsRepository;
@@ -74,11 +73,11 @@ public class StoriesService {
                         ? creatorUserId
                         : userAccount.getId();
 
-        Users creator = getUser(orgId, effectiveCreatorId);
+        UserAccount creator = getUser(orgId, effectiveCreatorId);
         Epics epic = getOptionalEpic(orgId, epicId);
         Sprints sprint = getOptionalSprint(orgId, sprintId);
-        Users assignee = getOptionalUser(orgId, assigneeUserId);
-        Users reporter = getOptionalUser(orgId, reporterUserId);
+        UserAccount assignee = getOptionalUser(orgId, assigneeUserId);
+        UserAccount reporter = getOptionalUser(orgId, reporterUserId);
 
         if (storyPoints == null) {
             storyPoints = 0;
@@ -341,11 +340,11 @@ public class StoriesService {
                 .orElseThrow(() -> new IllegalArgumentException("Sprint not found"));
     }
 
-    private Users getOptionalUser(Long orgId, Long userId) {
+    private UserAccount getOptionalUser(Long orgId, Long userId) {
         return userId == null ? null : getUser(orgId, userId);
     }
 
-    private Users getUser(Long orgId, Long userId) {
+    private UserAccount getUser(Long orgId, Long userId) {
         if (userId == null || userId <= 0) {
             throw new IllegalArgumentException("Invalid user id");
         }

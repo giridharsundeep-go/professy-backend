@@ -4,12 +4,11 @@ import com.greatleyposhley.professy.entities.Sprints;
 import com.greatleyposhley.professy.entities.Stories;
 import com.greatleyposhley.professy.entities.Tasks;
 import com.greatleyposhley.professy.entities.UserAccount;
-import com.greatleyposhley.professy.entities.Users;
 import com.greatleyposhley.professy.repositories.SprintsRepository;
 import com.greatleyposhley.professy.repositories.StoriesRepository;
 import com.greatleyposhley.professy.repositories.TasksRepository;
 import com.greatleyposhley.professy.repositories.UserAccountRepository;
-import com.greatleyposhley.professy.repositories.UsersRepository;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -24,13 +23,13 @@ public class TasksService {
     private final StoriesRepository storiesRepository;
     private final SprintsRepository sprintsRepository;
     private final UserAccountRepository userAccountRepository;
-    private final UsersRepository usersRepository;
+    private final UserAccountRepository usersRepository;
 
     public TasksService(TasksRepository tasksRepository,
                         StoriesRepository storiesRepository,
                         SprintsRepository sprintsRepository,
                         UserAccountRepository userAccountRepository,
-                        UsersRepository usersRepository) {
+                        UserAccountRepository usersRepository) {
         this.tasksRepository = tasksRepository;
         this.storiesRepository = storiesRepository;
         this.sprintsRepository = sprintsRepository;
@@ -93,9 +92,9 @@ public class TasksService {
                         ? creatorUserId
                         : userAccount.getId();
 
-        Users creator = getUser(orgId, effectiveCreatorId);
-        Users assignee = getOptionalUser(orgId, assigneeUserId);
-        Users reporter = getOptionalUser(orgId, reporterUserId);
+        UserAccount creator = getUser(orgId, effectiveCreatorId);
+        UserAccount assignee = getOptionalUser(orgId, assigneeUserId);
+        UserAccount reporter = getOptionalUser(orgId, reporterUserId);
 
         if (status == null || status.isBlank()) {
             status = "TODO";
@@ -295,11 +294,11 @@ public class TasksService {
                 .orElseThrow(() -> new IllegalArgumentException("Sprint not found"));
     }
 
-    private Users getOptionalUser(Long orgId, Long userId) {
+    private UserAccount getOptionalUser(Long orgId, Long userId) {
         return userId == null ? null : getUser(orgId, userId);
     }
 
-    private Users getUser(Long orgId, Long userId) {
+    private UserAccount getUser(Long orgId, Long userId) {
         if (userId == null || userId <= 0) {
             throw new IllegalArgumentException("Invalid user id");
         }

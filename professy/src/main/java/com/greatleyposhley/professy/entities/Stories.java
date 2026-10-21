@@ -45,20 +45,20 @@ public class Stories {
     @JoinColumn(name = "user_id", nullable = false)
     private UserAccount userAccount;
 
-    // Foreign Key to users table (Creator)
+    // Foreign Key to UserAccount table (Creator)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "creator_user_id", nullable = false)
-    private Users creator;
+    private UserAccount creator;
 
-    // Foreign Key to users table (Assignee - Optional)
+    // Foreign Key to UserAccount table (Assignee - Optional)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assignee_user_id")
-    private Users assignee;
+    private UserAccount assignee;
 
-    // Foreign Key to users table (Reporter - Optional)
+    // Foreign Key to UserAccount table (Reporter - Optional)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reporter_user_id")
-    private Users reporter;
+    private UserAccount reporter;
 
     @Column(nullable = false, length = 255)
     private String title;
@@ -130,27 +130,27 @@ public class Stories {
         this.userAccount = userAccount;
     }
 
-    public Users getCreator() {
+    public UserAccount getCreator() {
         return creator;
     }
 
-    public void setCreator(Users creator) {
+    public void setCreator(UserAccount creator) {
         this.creator = creator;
     }
 
-    public Users getAssignee() {
+    public UserAccount getAssignee() {
         return assignee;
     }
 
-    public void setAssignee(Users assignee) {
+    public void setAssignee(UserAccount assignee) {
         this.assignee = assignee;
     }
 
-    public Users getReporter() {
+    public UserAccount getReporter() {
         return reporter;
     }
 
-    public void setReporter(Users reporter) {
+    public void setReporter(UserAccount reporter) {
         this.reporter = reporter;
     }
 

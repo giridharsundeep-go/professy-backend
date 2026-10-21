@@ -1,8 +1,8 @@
 package com.greatleyposhley.professy.services;
 
 import com.greatleyposhley.professy.entities.dtos.OrgValidateResponse;
-import com.greatleyposhley.professy.dtos.VerifyEmailRequest;
-import com.greatleyposhley.professy.dtos.VerifyEmailResponse;
+import com.greatleyposhley.professy.entities.dtos.VerifyEmailRequest;
+import com.greatleyposhley.professy.entities.dtos.VerifyEmailResponse;
 import com.greatleyposhley.professy.entities.Org;
 import com.greatleyposhley.professy.repositories.OrgRepository;
 import com.greatleyposhley.professy.repositories.UserAccountRepository;

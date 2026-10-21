@@ -1,19 +1,7 @@
 package com.greatleyposhley.professy.entities;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
-import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
-
+import jakarta.persistence.*;
 import java.time.LocalDateTime;
-import java.util.Objects;
 
 @Entity
 @Table(
@@ -21,6 +9,10 @@ import java.util.Objects;
         uniqueConstraints = {
                 @UniqueConstraint(name = "uk_user_account_email", columnNames = "email"),
                 @UniqueConstraint(name = "uk_user_account_phone", columnNames = "phone")
+        },
+        indexes = {
+                @Index(name = "idx_email", columnList = "email"),
+                @Index(name = "idx_phone", columnList = "phone")
         }
 )
 public class UserAccount {
@@ -29,19 +21,16 @@ public class UserAccount {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "org_id", nullable = false)
-    private Long orgId;
-
     @Column(name = "first_name", nullable = false, length = 100)
     private String firstName;
 
     @Column(name = "last_name", nullable = false, length = 100)
     private String lastName;
 
-    @Column(name = "email", nullable = false, unique = true, length = 150)
+    @Column(name = "email", nullable = false, length = 150)
     private String email;
 
-    @Column(name = "phone", nullable = false, unique = true, length = 15)
+    @Column(name = "phone", nullable = false, length = 15)
     private String phone;
 
     @Enumerated(EnumType.STRING)
@@ -51,10 +40,10 @@ public class UserAccount {
     @Column(name = "password", nullable = false, length = 255)
     private String password;
 
-    @Column(name = "created_at", updatable = false)
+    @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Column(name = "updated_at", insertable = false, updatable = false)
     private LocalDateTime updatedAt;
 
     @Column(name = "is_active")
@@ -63,47 +52,63 @@ public class UserAccount {
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
 
-    // Default No-Arg Constructor (Required by JPA)
-    public UserAccount() {
-    }
+    @Column(name = "org_id", nullable = false)
+    private Long orgId;
 
-    // All-Args Constructor
-    public UserAccount(Long id, Long orgId, String firstName, String lastName, String email, String phone,
-                       Gender gender, String password, LocalDateTime createdAt,
-                       LocalDateTime updatedAt, Boolean isActive, LocalDateTime lastLogin) {
-        this.id = id;
-        this.orgId = orgId;
-        this.firstName = firstName;
-        this.lastName = lastName;
-        this.email = email;
-        this.phone = phone;
-        this.gender = gender;
-        this.password = password;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
-        this.isActive = isActive;
-        this.lastLogin = lastLogin;
+    @Column(name = "role_id")
+    private Long roleId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "employee_id_prefix", length = 3)
+    private EmployeeIdPrefix employeeIdPrefix = EmployeeIdPrefix.EMP;
+
+    @Column(name = "employee_id_number", length = 50)
+    private String employeeIdNumber;
+
+    @Column(name = "manager_id")
+    private Long managerId;
+
+    @Column(name = "location_country", length = 2)
+    private String locationCountry;
+
+    @Column(name = "location_state", length = 100)
+    private String locationState;
+
+    @Column(name = "location_city", length = 100)
+    private String locationCity;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "location_work_model", length = 10)
+    private LocationWorkModel locationWorkModel = LocationWorkModel.HQ;
+
+    @Column(name = "location_desk_code", length = 50)
+    private String locationDeskCode;
+
+    @Column(name = "profile_picture_url", length = 2048)
+    private String profilePictureUrl;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "org_role", nullable = false, length = 20)
+    private OrgRole orgRole = OrgRole.ORG_USER;
+
+    public UserAccount() {
     }
 
     @PrePersist
     protected void onCreate() {
-        if (this.createdAt == null) {
-            this.createdAt = LocalDateTime.now();
+        if (isActive == null) {
+            isActive = true;
         }
-        if (this.updatedAt == null) {
-            this.updatedAt = LocalDateTime.now();
+        if (employeeIdPrefix == null) {
+            employeeIdPrefix = EmployeeIdPrefix.EMP;
         }
-        if (this.isActive == null) {
-            this.isActive = true;
+        if (locationWorkModel == null) {
+            locationWorkModel = LocationWorkModel.HQ;
+        }
+        if (orgRole == null) {
+            orgRole = OrgRole.ORG_USER;
         }
     }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    // Getters and Setters
 
     public Long getId() {
         return id;
@@ -111,14 +116,6 @@ public class UserAccount {
 
     public void setId(Long id) {
         this.id = id;
-    }
-
-    public Long getOrgId() {
-        return orgId;
-    }
-
-    public void setOrgId(Long orgId) {
-        this.orgId = orgId;
     }
 
     public String getFirstName() {
@@ -173,16 +170,8 @@ public class UserAccount {
         return createdAt;
     }
 
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
     }
 
     public Boolean getIsActive() {
@@ -201,37 +190,99 @@ public class UserAccount {
         this.lastLogin = lastLogin;
     }
 
-    // equals and hashCode
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        UserAccount that = (UserAccount) o;
-        return Objects.equals(id, that.id);
+    public Long getOrgId() {
+        return orgId;
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(id);
+    public void setOrgId(Long orgId) {
+        this.orgId = orgId;
     }
 
-    // toString
+    public Long getRoleId() {
+        return roleId;
+    }
 
-    @Override
-    public String toString() {
-        return "UserAccount{" +
-                "id=" + id +
-                ", orgId=" + orgId +
-                ", firstName='" + firstName + '\'' +
-                ", lastName='" + lastName + '\'' +
-                ", email='" + email + '\'' +
-                ", phone='" + phone + '\'' +
-                ", gender=" + gender +
-                ", createdAt=" + createdAt +
-                ", updatedAt=" + updatedAt +
-                ", isActive=" + isActive +
-                ", lastLogin=" + lastLogin +
-                '}';
+    public void setRoleId(Long roleId) {
+        this.roleId = roleId;
+    }
+
+    public EmployeeIdPrefix getEmployeeIdPrefix() {
+        return employeeIdPrefix;
+    }
+
+    public void setEmployeeIdPrefix(EmployeeIdPrefix employeeIdPrefix) {
+        this.employeeIdPrefix = employeeIdPrefix;
+    }
+
+    public String getEmployeeIdNumber() {
+        return employeeIdNumber;
+    }
+
+    public void setEmployeeIdNumber(String employeeIdNumber) {
+        this.employeeIdNumber = employeeIdNumber;
+    }
+
+    public Long getManagerId() {
+        return managerId;
+    }
+
+    public void setManagerId(Long managerId) {
+        this.managerId = managerId;
+    }
+
+    public String getLocationCountry() {
+        return locationCountry;
+    }
+
+    public void setLocationCountry(String locationCountry) {
+        this.locationCountry = locationCountry;
+    }
+
+    public String getLocationState() {
+        return locationState;
+    }
+
+    public void setLocationState(String locationState) {
+        this.locationState = locationState;
+    }
+
+    public String getLocationCity() {
+        return locationCity;
+    }
+
+    public void setLocationCity(String locationCity) {
+        this.locationCity = locationCity;
+    }
+
+    public LocationWorkModel getLocationWorkModel() {
+        return locationWorkModel;
+    }
+
+    public void setLocationWorkModel(LocationWorkModel locationWorkModel) {
+        this.locationWorkModel = locationWorkModel;
+    }
+
+    public String getLocationDeskCode() {
+        return locationDeskCode;
+    }
+
+    public void setLocationDeskCode(String locationDeskCode) {
+        this.locationDeskCode = locationDeskCode;
+    }
+
+    public String getProfilePictureUrl() {
+        return profilePictureUrl;
+    }
+
+    public void setProfilePictureUrl(String profilePictureUrl) {
+        this.profilePictureUrl = profilePictureUrl;
+    }
+
+    public OrgRole getOrgRole() {
+        return orgRole;
+    }
+
+    public void setOrgRole(OrgRole orgRole) {
+        this.orgRole = orgRole;
     }
 }

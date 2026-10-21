@@ -84,12 +84,12 @@ public class Testcases {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     @JsonIgnoreProperties({"manager", "role", "userAccount", "hibernateLazyInitializer", "handler"})
-    private Users user;
+    private UserAccount user;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
     @JsonIgnoreProperties({"manager", "role", "userAccount", "hibernateLazyInitializer", "handler"})
-    private Users creator;
+    private UserAccount creator;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -151,11 +151,11 @@ public class Testcases {
     public Tasks getTask() { return task; }
     public void setTask(Tasks task) { this.task = task; }
 
-    public Users getUser() { return user; }
-    public void setUser(Users user) { this.user = user; }
+    public UserAccount getUser() { return user; }
+    public void setUser(UserAccount user) { this.user = user; }
 
-    public Users getCreator() { return creator; }
-    public void setCreator(Users creator) { this.creator = creator; }
+    public UserAccount getCreator() { return creator; }
+    public void setCreator(UserAccount creator) { this.creator = creator; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

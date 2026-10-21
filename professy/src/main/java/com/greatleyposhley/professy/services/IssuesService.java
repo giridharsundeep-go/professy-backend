@@ -26,7 +26,7 @@ public class IssuesService {
     IssuesRepository issuesRepository;
 
     @Autowired
-    UsersRepository usersRepository;
+    UserAccountRepository usersRepository;
 
     @Autowired
     UserAccountRepository userAccountRepository;
@@ -82,7 +82,7 @@ public class IssuesService {
                 throw new IllegalArgumentException("Creator ID could not be determined from input: " + creatorSource);
             }
 
-            Optional<Users> userOpt = usersRepository.findById(creatorId);
+            Optional<UserAccount> userOpt = usersRepository.findById(creatorId);
             Optional<UserAccount> adminOpt = userAccountRepository.findById(creatorId);
 
             if (userOpt.isPresent()) {
@@ -110,7 +110,7 @@ public class IssuesService {
         // 5. Resolve Assignee
         if (issue.getAssignee() != null && issue.getAssignee().getId() != null) {
             Long assigneeId = issue.getAssignee().getId();
-            Users assignee = usersRepository.findById(assigneeId).orElse(null);
+            UserAccount assignee = usersRepository.findById(assigneeId).orElse(null);
             issue.setAssignee(assignee);
         } else {
             issue.setAssignee(null);
@@ -119,7 +119,7 @@ public class IssuesService {
         // 6. Resolve Reporter
         if (issue.getReporter() != null && issue.getReporter().getId() != null) {
             Long reporterId = issue.getReporter().getId();
-            Users reporter = usersRepository.findById(reporterId).orElse(null);
+            UserAccount reporter = usersRepository.findById(reporterId).orElse(null);
             issue.setReporter(reporter);
         } else {
             issue.setReporter(null);
@@ -171,7 +171,7 @@ public class IssuesService {
             Object idVal = map.get("id");
             return extractId(idVal);
         }
-        if (obj instanceof Users user) {
+        if (obj instanceof UserAccount user) {
             return user.getId();
         }
         if (obj instanceof UserAccount account) {

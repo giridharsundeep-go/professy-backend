@@ -41,18 +41,18 @@ public class Issues {
     @Any
     @AnyKeyJavaClass(Long.class)
     @AnyDiscriminator(DiscriminatorType.STRING)
-    @AnyDiscriminatorValue(discriminator = "USER", entity = Users.class)
+    @AnyDiscriminatorValue(discriminator = "USER", entity = UserAccount.class)
     @AnyDiscriminatorValue(discriminator = "ADMIN", entity = UserAccount.class)
     @JoinColumn(name = "creator_user_id")
     private Object creator;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assignee_user_id")
-    private Users assignee;
+    private UserAccount assignee;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reporter_user_id")
-    private Users reporter;
+    private UserAccount reporter;
 
     @Column(name = "title", nullable = false, length = 255)
     private String title;
@@ -147,19 +147,19 @@ public class Issues {
         this.creator = creator;
     }
 
-    public Users getAssignee() {
+    public UserAccount getAssignee() {
         return assignee;
     }
 
-    public void setAssignee(Users assignee) {
+    public void setAssignee(UserAccount assignee) {
         this.assignee = assignee;
     }
 
-    public Users getReporter() {
+    public UserAccount getReporter() {
         return reporter;
     }
 
-    public void setReporter(Users reporter) {
+    public void setReporter(UserAccount reporter) {
         this.reporter = reporter;
     }
 
