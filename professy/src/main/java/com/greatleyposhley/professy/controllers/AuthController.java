@@ -147,30 +147,60 @@ public class AuthController {
 
     // ---------------- CREATE USER ----------------
 
+
     @PostMapping("/user/master/account/create")
     public ResponseEntity<Map<String, Object>> createUser(
-            @RequestBody UserAccount user, @RequestParam("orgId") Long orgId) {
+            @RequestBody UserAccount user,
+            @RequestParam("orgId") Long orgId) {
 
         Map<String, Object> response = new HashMap<>();
 
         try {
-
-            if (user.getFirstName() == null
-                    || user.getFirstName().trim().isEmpty()
-                    || user.getLastName() == null
-                    || user.getLastName().trim().isEmpty()
-                    || user.getEmail() == null
-                    || user.getEmail().trim().isEmpty()
-                    || user.getPhone() == null
-                    || user.getPhone().trim().isEmpty()
-                    || user.getGender() == null
-                    || user.getPassword() == null
-                    || user.getPassword().isBlank()) {
-
+            if (user == null || orgId == null) {
                 response.put("success", false);
-                response.put("message",
-                        "All required user fields must be provided");
+                response.put("message", "User data and orgId are required");
+                return ResponseEntity.badRequest().body(response);
+            }
 
+            // Identify the missing field instead of returning a generic error.
+            if (user.getFirstName() == null
+                    || user.getFirstName().isBlank()) {
+                response.put("success", false);
+                response.put("message", "First name is required");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            if (user.getLastName() == null
+                    || user.getLastName().isBlank()) {
+                response.put("success", false);
+                response.put("message", "Last name is required");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            if (user.getEmail() == null
+                    || user.getEmail().isBlank()) {
+                response.put("success", false);
+                response.put("message", "Email is required");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            if (user.getPhone() == null
+                    || user.getPhone().isBlank()) {
+                response.put("success", false);
+                response.put("message", "Phone is required");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            if (user.getGender() == null) {
+                response.put("success", false);
+                response.put("message", "Gender is required");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            if (user.getPassword() == null
+                    || user.getPassword().isBlank()) {
+                response.put("success", false);
+                response.put("message", "Password is required");
                 return ResponseEntity.badRequest().body(response);
             }
 
@@ -181,19 +211,20 @@ public class AuthController {
             if (userAccountRepository.findByEmail(email).isPresent()) {
                 response.put("success", false);
                 response.put("message", "Email already exists");
-
                 return ResponseEntity.status(HttpStatus.CONFLICT)
                         .body(response);
             }
 
             user.setEmail(email);
-            user.setPhone(user.getPhone().trim());
             user.setFirstName(user.getFirstName().trim());
             user.setLastName(user.getLastName().trim());
-            user.setOrgId(user.getOrgId());
+            user.setPhone(user.getPhone().trim());
+
+            // Use the orgId supplied in the request.
+            user.setOrgId(orgId);
+
             user.setPassword(passwordEncoder.encode(user.getPassword()));
             user.setIsActive(true);
-            user.setOrgId(orgId);
 
             UserAccount savedUser = userService.createUser(user);
 
@@ -210,10 +241,12 @@ public class AuthController {
             response.put("success", false);
             response.put("message", ex.getMessage());
 
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(response);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
 
         } catch (Exception ex) {
+            // Log the exception server-side for debugging.
+            // log.error( "Failed to create user", ex);
+
             response.put("success", false);
             response.put("message", "Failed to create user");
 
@@ -221,4 +254,5 @@ public class AuthController {
                     .body(response);
         }
     }
+
 }

@@ -1,3 +1,4 @@
+
 package com.greatleyposhley.professy.components;
 
 import org.springframework.context.annotation.Bean;
@@ -9,7 +10,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
 @Configuration
 public class SecurityConfig {
 
@@ -37,17 +37,21 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
 
                         // Allow CORS preflight requests
-                        .requestMatchers(
-                                HttpMethod.OPTIONS, "/**"
-                        ).permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // Authentication APIs are public
+                        // Public authentication APIs
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**"
+                        ).permitAll()
+                        // User account APIs
+                        .requestMatchers("/api/user/**").authenticated()
+                        .requestMatchers("/api/users/**").authenticated()
+                        .requestMatchers("/api/organizations/*/users/**").authenticated()
 
                         // Existing application APIs
                         .requestMatchers("/api/roles/**").authenticated()
-                        .requestMatchers("/api/user/**").authenticated()
-                        .requestMatchers("/api/users/**").authenticated()
                         .requestMatchers("/api/epics/**").authenticated()
                         .requestMatchers("/api/stories/**").authenticated()
                         .requestMatchers("/api/products/**").authenticated()
@@ -56,7 +60,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/tasks/**").authenticated()
                         .requestMatchers("/api/testcases/**").authenticated()
 
-                        // Developer Documentation APIs
+                        // Developer documentation APIs
+                        .requestMatchers("/api/docs/spaces/*/folders").authenticated()
+                        .requestMatchers("/api/docs/spaces/*/folders/**").authenticated()
+                        .requestMatchers("/api/docs/folders/**").authenticated()
                         .requestMatchers("/api/docs/spaces/**").authenticated()
                         .requestMatchers("/api/docs/pages/**").authenticated()
                         .requestMatchers("/api/docs/page-versions/**").authenticated()
@@ -64,11 +71,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/docs/api-versions/**").authenticated()
                         .requestMatchers("/api/docs/permissions/**").authenticated()
                         .requestMatchers("/api/docs/audit-logs/**").authenticated()
-                        .requestMatchers("/api/docs/spaces/*/folders").authenticated()
-                        .requestMatchers("/api/docs/spaces/*/folders").authenticated()
-                        .requestMatchers("/api/docs/spaces/*/folders/**").authenticated()
-                        .requestMatchers("/api/docs/folders/**").authenticated()
-                        // Protect all other endpoints by default
+
+                        // Protect all remaining endpoints
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(

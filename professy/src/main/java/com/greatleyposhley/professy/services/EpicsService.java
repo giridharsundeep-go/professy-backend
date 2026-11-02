@@ -13,6 +13,10 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,18 +27,15 @@ public class EpicsService {
     private final ProjectsRepository projectsRepository;
     private final SprintsRepository sprintsRepository;
     private final UserAccountRepository userAccountRepository;
-    private final UserAccountRepository UserAccountRepository;
 
     public EpicsService(EpicsRepository epicsRepository,
                         ProjectsRepository projectsRepository,
                         SprintsRepository sprintsRepository,
-                        UserAccountRepository userAccountRepository,
-                        UserAccountRepository UserAccountRepository) {
+                        UserAccountRepository userAccountRepository) {
         this.epicsRepository = epicsRepository;
         this.projectsRepository = projectsRepository;
         this.sprintsRepository = sprintsRepository;
         this.userAccountRepository = userAccountRepository;
-        this.UserAccountRepository = UserAccountRepository;
     }
 
     @Transactional
@@ -140,6 +141,51 @@ public class EpicsService {
         for (Epics epic : epicsRepository.findAllByOrgIdAndProject_IdOrderByCreatedAtDesc(orgId, projectId)) {
             result.add(toResponse(epic));
         }
+        return result;
+    }
+
+    /**
+     * Paginated endpoint support. Returns only one page of epics for the selected
+     * organization and project, avoiding loading the entire project into memory.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> getEpicsByProjectPage(
+            Long orgId,
+            Long projectId,
+            String userEmail,
+            int page,
+            int size) {
+
+        getUserAccount(orgId, userEmail);
+        getProject(orgId, projectId);
+
+        int safePage = Math.max(0, page);
+        int safeSize = Math.max(1, Math.min(size, 100));
+        Pageable pageable = PageRequest.of(
+                safePage,
+                safeSize,
+                Sort.by(Sort.Direction.DESC, "createdAt")
+        );
+
+        Page<Epics> epicsPage =
+                epicsRepository.findAllByOrgIdAndProject_IdOrderByCreatedAtDesc(
+                        orgId, projectId, pageable);
+
+        List<Map<String, Object>> content = epicsPage.getContent()
+                .stream()
+                .map(this::toResponse)
+                .toList();
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("content", content);
+        result.put("page", epicsPage.getNumber());
+        result.put("size", epicsPage.getSize());
+        result.put("totalElements", epicsPage.getTotalElements());
+        result.put("totalPages", epicsPage.getTotalPages());
+        result.put("first", epicsPage.isFirst());
+        result.put("last", epicsPage.isLast());
+        result.put("hasNext", epicsPage.hasNext());
+        result.put("hasPrevious", epicsPage.hasPrevious());
         return result;
     }
 
@@ -289,7 +335,7 @@ public class EpicsService {
             throw new IllegalArgumentException("Invalid user id");
         }
 
-        return UserAccountRepository.findByOrgIdAndId(orgId, userId)
+        return userAccountRepository.findByOrgIdAndId(orgId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
     }
 

@@ -33,4 +33,23 @@ public class OrgComponent {
                 );
     }
 
+    public UserAccount getAuthenticatedUser(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new IllegalArgumentException("Authentication required");
+        }
+
+        String email = authentication.getName();
+
+        if (email == null || email.trim().isEmpty()) {
+            throw new IllegalArgumentException("Authenticated user is required");
+        }
+
+        return userAccountRepository
+                .findByEmail(email.trim().toLowerCase())
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Authenticated user not found")
+                );
+    }
+
+
 }

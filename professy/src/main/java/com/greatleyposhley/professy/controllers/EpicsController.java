@@ -70,6 +70,33 @@ public class EpicsController {
         }
     }
 
+    /**
+     * Paginated epic listing.
+     * Example: GET /api/projects/12/epics/page?page=0&size=100
+     */
+    @GetMapping("/projects/{projectId}/epics/page")
+    public ResponseEntity<Map<String, Object>> getProjectEpicsPage(
+            @PathVariable Long projectId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "100") int size,
+            Authentication authentication) {
+        try {
+            Long orgId = getOrgId(authentication);
+            Map<String, Object> data = epicsService.getEpicsByProjectPage(
+                    orgId,
+                    projectId,
+                    authentication.getName(),
+                    page,
+                    size
+            );
+            return success(data, "Epics page fetched successfully", HttpStatus.OK);
+        } catch (IllegalArgumentException ex) {
+            return error(ex.getMessage(), HttpStatus.BAD_REQUEST);
+        } catch (Exception ex) {
+            return error(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
     @GetMapping("/projects/{projectId}/epics")
     public ResponseEntity<Map<String, Object>> getProjectEpics(
             @PathVariable Long projectId,

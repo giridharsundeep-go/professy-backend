@@ -1,5 +1,6 @@
 package com.greatleyposhley.professy.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -37,7 +38,7 @@ public class UserAccount {
     @Column(name = "gender", nullable = false)
     private Gender gender;
 
-    @Column(name = "password", nullable = false, length = 255)
+    @Column(name = "password", nullable = true, length = 255)
     private String password;
 
     @Column(name = "created_at", insertable = false, updatable = false)
@@ -284,5 +285,34 @@ public class UserAccount {
 
     public void setOrgRole(OrgRole orgRole) {
         this.orgRole = orgRole;
+    }
+
+    @Override
+    public String toString() {
+        return "UserAccount{" +
+                "id=" + id +
+                ", firstName='" + firstName + '\'' +
+                ", lastName='" + lastName + '\'' +
+                ", email='" + email + '\'' +
+                ", phone='" + phone + '\'' +
+                ", gender=" + gender +
+                ", password='" + password + '\'' +
+                ", createdAt=" + createdAt +
+                ", updatedAt=" + updatedAt +
+                ", isActive=" + isActive +
+                ", lastLogin=" + lastLogin +
+                ", orgId=" + orgId +
+                ", roleId=" + roleId +
+                ", employeeIdPrefix=" + employeeIdPrefix +
+                ", employeeIdNumber='" + employeeIdNumber + '\'' +
+                ", managerId=" + managerId +
+                ", locationCountry='" + locationCountry + '\'' +
+                ", locationState='" + locationState + '\'' +
+                ", locationCity='" + locationCity + '\'' +
+                ", locationWorkModel=" + locationWorkModel +
+                ", locationDeskCode='" + locationDeskCode + '\'' +
+                ", profilePictureUrl='" + profilePictureUrl + '\'' +
+                ", orgRole=" + orgRole +
+                '}';
     }
 }

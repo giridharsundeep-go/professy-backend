@@ -82,13 +82,17 @@ public class Testcases {
     private Tasks task;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
-    @JsonIgnoreProperties({"manager", "role", "userAccount", "hibernateLazyInitializer", "handler"})
+    @JoinColumn(
+            name = "user_id",
+            foreignKey = @ForeignKey(name = "fk_testcases_user")
+    )
     private UserAccount user;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by")
-    @JsonIgnoreProperties({"manager", "role", "userAccount", "hibernateLazyInitializer", "handler"})
+    @JoinColumn(
+            name = "created_by",
+            foreignKey = @ForeignKey(name = "fk_testcases_created_by")
+    )
     private UserAccount creator;
 
     @CreationTimestamp
