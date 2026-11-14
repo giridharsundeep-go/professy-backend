@@ -1,0 +1,22 @@
+package com.greatleyposhley.professy.collaboration;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+import java.util.*;
+
+@RestController @RequestMapping("/api/tickets/{kind}/{id}")
+public class CollaborationExtrasController {
+ private final WorkAccess access;private final TicketCollaborationService events;private final WorkspaceDocumentsController documents;
+ public CollaborationExtrasController(WorkAccess access,TicketCollaborationService events,WorkspaceDocumentsController documents){this.access=access;this.events=events;this.documents=documents;}
+ @GetMapping("/documents")public Object list(@PathVariable String kind,@PathVariable long id){access.ticket(kind,id,false);var rows=access.jdbc.queryForList("SELECT d.id,d.title,s.slug,u.first_name,u.last_name FROM ticket_documents l JOIN doc_pages d ON d.id=l.document_id AND d.org_id=l.org_id JOIN doc_spaces s ON s.id=d.space_id LEFT JOIN user_account u ON u.id=d.created_by WHERE l.org_id=? AND l.ticket_type=? AND l.ticket_id=? ORDER BY l.created_at DESC",access.actor().getOrgId(),access.kind(kind),id);return rows.stream().filter(row->{try{documents.get(WorkAccess.number(row.get("id")));return true;}catch(ResponseStatusException error){return false;}}).map(row->{row.put("projectId",WorkAccess.number(row.get("slug").toString().replace("project-","")));return row;}).toList();}
+ @PostMapping("/documents")@Transactional public Object link(@PathVariable String kind,@PathVariable long id,@RequestBody Map<String,Object> body){access.ticket(kind,id,true);long document=WorkAccess.number(body.get("documentId"));documents.get(document);access.jdbc.update("INSERT IGNORE INTO ticket_documents(org_id,ticket_type,ticket_id,document_id,linked_by) VALUES(?,?,?,?,?)",access.actor().getOrgId(),access.kind(kind),id,document,access.actor().getId());events.record(kind,id,"DOCUMENT_LINKED",Map.of(),Map.of("documentId",document));return list(kind,id);}
+ @DeleteMapping("/documents/{document}")@Transactional public void unlink(@PathVariable String kind,@PathVariable long id,@PathVariable long document){access.ticket(kind,id,true);access.jdbc.update("DELETE FROM ticket_documents WHERE org_id=? AND ticket_type=? AND ticket_id=? AND document_id=?",access.actor().getOrgId(),access.kind(kind),id,document);events.record(kind,id,"DOCUMENT_UNLINKED",Map.of("documentId",document),Map.of());}
+ @PostMapping("/clone")@Transactional public Object clone(@PathVariable String kind,@PathVariable long id){
+  String type=access.kind(kind);if(type.equals("TEST_CASE"))throw new IllegalArgumentException("Clone work items from this action");access.require("TICKETS.CREATE");var original=access.ticket(type,id,false);String table=switch(type){case "EPIC"->"epics";case "STORY"->"stories";case "TASK"->"tasks";default->"issues";};
+  var values=new LinkedHashMap<String,Object>();for(String field:List.of("description","project_id","story_id","epic_id","priority","story_points"))if(original.containsKey(field))values.put(field,original.get(field));
+  String title=Objects.toString(original.get(type.equals("EPIC")?"name":"title"),"Untitled");values.put(type.equals("EPIC")?"name":"title",("Copy of "+title).substring(0,Math.min(255,title.length()+8)));values.put("org_id",access.actor().getOrgId());values.put("user_id",access.actor().getId());values.put("creator_user_id",access.actor().getId());values.put("reporter_user_id",access.actor().getId());values.put("status",access.policy.validateStatus(access.actor().getOrgId(),"BACKLOG"));values.put("created_at",java.sql.Timestamp.from(java.time.Instant.now()));values.put("updated_at",java.sql.Timestamp.from(java.time.Instant.now()));if(type.equals("EPIC")||type.equals("ISSUE"))values.put(type.equals("EPIC")?"epic_code":"issue_code",type+"-"+UUID.randomUUID().toString().replace("-",""));
+  access.jdbc.update("INSERT INTO "+table+" ("+String.join(",",values.keySet())+") VALUES ("+String.join(",",Collections.nCopies(values.size(),"?"))+")",values.values().toArray());long clone=access.jdbc.queryForObject("SELECT LAST_INSERT_ID()",Long.class);
+  events.record(type,clone,"TICKET_CLONED",Map.of(),Map.of("sourceType",type,"sourceId",id));return Map.of("id",clone,"kind",type,"projectId",WorkAccess.number(original.get("work_project_id")));
+ }
+}

@@ -15,6 +15,7 @@ import java.util.*;
 
 @Service
 public class SprintsService {
+    @org.springframework.beans.factory.annotation.Autowired private com.greatleyposhley.professy.collaboration.SprintLifecycleCoordinator lifecycle;
 
     private final SprintsRepository sprintsRepository;
     private final ProjectsRepository projectsRepository;
@@ -297,6 +298,7 @@ public class SprintsService {
                                 )
                         );
 
+        if(status!=null&&!status.equalsIgnoreCase(sprint.getStatus().name()))throw new IllegalArgumentException("Use the sprint lifecycle Start/Close controls to change status");
         LocalDate startDate =
                 readDate(
                         payload,
@@ -536,52 +538,14 @@ public class SprintsService {
     // ============================================================
 
     @Transactional
-    public int activateSprintManually(Long orgId, Long sprintId) {
-
-        Sprints sprint =
-                sprintsRepository
-                        .findById(sprintId)
-                        .orElseThrow(() ->
-                                new IllegalArgumentException(
-                                        "Sprint not found"
-                                )
-                        );
-
-        sprint.setStatus(Sprints.Status.ACTIVE);
-        sprint.setActualStartAt(
-                LocalDateTime.now()
-        );
-
-        sprintsRepository.save(sprint);
-
-        return 1;
-    }
+    public int activateSprintManually(Long orgId, Long sprintId) { lifecycle.start(orgId,sprintId,0,false);return 1; }
 
     // ============================================================
     // MANUAL COMPLETE
     // ============================================================
 
     @Transactional
-    public int completeSprintManually(Long orgId, Long sprintId) {
-
-        Sprints sprint =
-                sprintsRepository
-                        .findById(sprintId)
-                        .orElseThrow(() ->
-                                new IllegalArgumentException(
-                                        "Sprint not found"
-                                )
-                        );
-
-        sprint.setStatus(Sprints.Status.COMPLETED);
-        sprint.setActualEndAt(
-                LocalDateTime.now()
-        );
-
-        sprintsRepository.save(sprint);
-
-        return 1;
-    }
+    public int completeSprintManually(Long orgId, Long sprintId) { lifecycle.close(orgId,sprintId,0,false);return 1; }
 
     // ============================================================
     // AUTOMATIC SPRINTS DUE FOR ACTIVATION

@@ -14,7 +14,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/boards")
-@CrossOrigin
 public class BoardsController {
 
     private final BoardService boardService;

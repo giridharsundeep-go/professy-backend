@@ -168,7 +168,7 @@ public class EpicsService {
         );
 
         Page<Epics> epicsPage =
-                epicsRepository.findAllByOrgIdAndProject_IdOrderByCreatedAtDesc(
+                epicsRepository.findPageByOrgIdAndProject_IdOrderByCreatedAtDesc(
                         orgId, projectId, pageable);
 
         List<Map<String, Object>> content = epicsPage.getContent()

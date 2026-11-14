@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ProjectsService {
+    @org.springframework.beans.factory.annotation.Autowired private com.greatleyposhley.professy.collaboration.SprintLifecycleCoordinator lifecycle;
 
     private final ProjectsRepository projectsRepository;
     private final SprintsRepository sprintsRepository;
@@ -46,8 +47,8 @@ public class ProjectsService {
 
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getProjects(Long orgId, String userEmail) {
-        Long userId = getUserId(orgId, userEmail);
-        return copyRows(projectsRepository.findProjectRowsByUserId(orgId, userId));
+        getUserId(orgId, userEmail);
+        return copyRows(projectsRepository.findProjectRowsByOrgId(orgId));
     }
 
     @Transactional(readOnly = true)
@@ -146,6 +147,7 @@ public class ProjectsService {
         Long productId = requiredLong(payload, "product_id");
 
         String status = stringValue(payload, "status", stringValue(existing, "status", "ACTIVE"));
+        if(java.util.Set.of("COMPLETED","DONE").contains(status.toUpperCase()))lifecycle.assertMayComplete(orgId,projectId);
         String methodology = stringValue(payload, "methodology", stringValue(existing, "methodology", "AGILE_SCRUM"));
         String priority = stringValue(payload, "priority", stringValue(existing, "priority", "MEDIUM"));
 

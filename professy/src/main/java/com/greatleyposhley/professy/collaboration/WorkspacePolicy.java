@@ -1,0 +1,62 @@
+package com.greatleyposhley.professy.collaboration;
+
+import com.greatleyposhley.professy.entities.*;
+import com.greatleyposhley.professy.repositories.UserAccountRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+import jakarta.annotation.PostConstruct;
+import tools.jackson.databind.ObjectMapper;
+import java.util.*;
+
+/** Organization-scoped roles, per-user overrides and ticket workflows. Designation remains separate. */
+@Service
+public class WorkspacePolicy {
+ private final JdbcTemplate jdbc;private final ObjectMapper json;private final UserAccountRepository users;
+ public static final List<String> RESOURCES=List.of("TICKETS","RELEASES","PROJECTS","SPRINTS","TEAMS","USERS","DESIGNATIONS","STATUSES","DOCUMENTS","TESTCASES","PRODUCTS","BOARDS","AGENTS","SHEETS","SLIDES","MEETINGS");
+ public static final List<String> ACTIONS=List.of("READ","CREATE","UPDATE","DELETE");
+ public static final Set<String> BASE=Set.of("TICKETS.CREATE","TICKETS.UPDATE","TICKETS.MOVE","RELEASES.CREATE","TESTCASES.CREATE","TESTCASES.UPDATE","DOCUMENTS.CREATE","DOCUMENTS.UPDATE","AGENTS.CREATE","AGENTS.UPDATE","SHEETS.CREATE","SHEETS.UPDATE","SLIDES.CREATE","SLIDES.UPDATE","MEETINGS.CREATE","MEETINGS.UPDATE");
+ public WorkspacePolicy(JdbcTemplate jdbc,ObjectMapper json,UserAccountRepository users){this.jdbc=jdbc;this.json=json;this.users=users;}
+ @PostConstruct void initialize(){new ResourceDatabasePopulator(new ClassPathResource("db/V20261103__workspace_policy.sql")).execute(Objects.requireNonNull(jdbc.getDataSource()));for(long org:jdbc.queryForList("SELECT DISTINCT org_id FROM user_account",Long.class))seed(org);}
+ public static List<String> permissions(){var result=new ArrayList<String>();for(var resource:RESOURCES)for(var action:ACTIONS)result.add(resource+"."+action);result.add("TICKETS.MOVE");return result;}
+ private static Set<String> grants(String... resources){var values=new LinkedHashSet<String>();for(String resource:resources)for(String action:List.of("CREATE","UPDATE","DELETE"))values.add(resource+"."+action);return values;}
+ public void seed(long org){
+  var defaults=new LinkedHashMap<String,Set<String>>();
+  defaults.put("MEMBER",Set.of());defaults.put("DEVELOPER",Set.of());defaults.put("QA_ENGINEER",grants("TESTCASES"));
+  defaults.put("SCRUM_MASTER",grants("SPRINTS","BOARDS","STATUSES"));
+  defaults.put("PRODUCT_OWNER",grants("TICKETS","RELEASES","STATUSES"));
+  defaults.put("PROJECT_MANAGER",grants("PROJECTS","SPRINTS","TEAMS","RELEASES","BOARDS","STATUSES"));
+  defaults.put("RELEASE_MANAGER",grants("RELEASES"));
+  defaults.put("MANAGEMENT",grants("PROJECTS","SPRINTS","TEAMS","RELEASES","BOARDS","PRODUCTS","STATUSES"));
+  for(var role:defaults.entrySet())jdbc.update("INSERT IGNORE INTO workspace_roles(org_id,code,name,permissions_json,system_role) VALUES(?,?,?,?,1)",org,role.getKey(),title(role.getKey()),json.writeValueAsString(role.getValue()));
+  String[][] statuses={{"BACKLOG","Backlog","#64748b","BACKLOG"},{"TODO","To Do","#3b82f6","TODO"},{"IN_PROGRESS","In Progress","#8b5cf6","IN_PROGRESS"},{"IN_REVIEW","In Review","#6366f1","IN_PROGRESS"},{"TESTING","Testing","#f59e0b","IN_PROGRESS"},{"COMPLETED","Completed","#16a34a","DONE"},{"BLOCKED","Blocked","#ef4444","IN_PROGRESS"}};
+  for(int i=0;i<statuses.length;i++){var s=statuses[i];jdbc.update("INSERT IGNORE INTO workspace_statuses(org_id,code,name,color,category,sort_order) VALUES(?,?,?,?,?,?)",org,s[0],s[1],s[2],s[3],i);}
+ }
+ public static String title(String value){return Arrays.stream(value.toLowerCase(Locale.ROOT).split("_")).map(v->v.isEmpty()?v:v.substring(0,1).toUpperCase()+v.substring(1)).reduce((a,b)->a+" "+b).orElse(value);}
+ public static boolean resolve(String permission,Set<String> grants,Map<String,Boolean> overrides){return overrides.containsKey(permission)?Boolean.TRUE.equals(overrides.get(permission)):permission.endsWith(".READ")||BASE.contains(permission)||grants.contains(permission);}
+ public boolean can(UserAccount user,String permission){if(user.getOrgRole()==OrgRole.SUPER_USER)return true;return Boolean.TRUE.equals(effective(user).get(permission));}
+ public Map<String,Boolean> effective(UserAccount user){var request=org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();String cache="workspace.permissions."+user.getOrgId()+"."+user.getId();if(request!=null&&request.getAttribute(cache,0) instanceof Map cached)return cached;var grants=new HashSet<String>();for(var row:jdbc.queryForList("SELECT r.permissions_json FROM workspace_roles r JOIN user_workspace_roles u ON u.org_id=r.org_id AND u.role_code=r.code WHERE u.org_id=? AND u.user_id=?",user.getOrgId(),user.getId()))for(Object value:json.readValue(row.get("permissions_json").toString(),List.class))grants.add(value.toString());var overrides=overrides(user.getOrgId(),user.getId());var result=new LinkedHashMap<String,Boolean>();for(String permission:permissions())result.put(permission,user.getOrgRole()==OrgRole.SUPER_USER||resolve(permission,grants,overrides));if(request!=null)request.setAttribute(cache,result,0);return result;}
+ public void require(UserAccount actor,String permission){if(!can(actor,permission))throw new ResponseStatusException(HttpStatus.FORBIDDEN,"You do not have permission for "+permission.toLowerCase(Locale.ROOT).replace('.',' '));}
+ public List<Map<String,Object>> roles(long org){var rows=jdbc.queryForList("SELECT code,name,permissions_json,system_role AS systemRole FROM workspace_roles WHERE org_id=? ORDER BY system_role DESC,name",org);for(var row:rows)row.put("permissions",json.readValue(row.remove("permissions_json").toString(),List.class));return rows;}
+ public List<String> assigned(long org,long user){var result=new ArrayList<>(jdbc.queryForList("SELECT role_code FROM user_workspace_roles WHERE org_id=? AND user_id=? ORDER BY role_code",String.class,org,user));if(!result.contains("MEMBER"))result.addFirst("MEMBER");return result;}
+ private UserAccount user(long org,long id){return users.findById(id).filter(u->u.getOrgId().equals(org)).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"User not found in your organization"));}
+ public Map<String,Boolean> overrides(long org,long id){var values=new LinkedHashMap<String,Boolean>();for(var row:jdbc.queryForList("SELECT permission,allowed FROM user_permission_overrides WHERE org_id=? AND user_id=?",org,id))values.put(row.get("permission").toString(),Boolean.TRUE.equals(row.get("allowed"))||WorkAccess.number(row.get("allowed"))==1);return values;}
+ public Object userAccess(UserAccount actor,long id){var u=user(actor.getOrgId(),id);return Map.of("roles",assigned(u.getOrgId(),id),"overrides",overrides(u.getOrgId(),id),"effective",effective(u),"superUser",u.getOrgRole()==OrgRole.SUPER_USER);}
+ @Transactional public void assign(UserAccount actor,long id,List<String> roles,Map<String,Boolean> overrides){
+  if(actor.getOrgRole()!=OrgRole.SUPER_USER)throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Only SUPER_USER can assign roles or permission overrides");
+  var target=user(actor.getOrgId(),id);if(target.getOrgRole()==OrgRole.SUPER_USER)throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"SUPER_USER always retains full access");
+  if(roles!=null){var allowed=new HashSet<>(jdbc.queryForList("SELECT code FROM workspace_roles WHERE org_id=?",String.class,actor.getOrgId()));if(!allowed.containsAll(roles))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Choose roles from your organization");jdbc.update("DELETE FROM user_workspace_roles WHERE org_id=? AND user_id=?",actor.getOrgId(),id);for(String role:new HashSet<>(roles))jdbc.update("INSERT INTO user_workspace_roles(org_id,user_id,role_code) VALUES(?,?,?)",actor.getOrgId(),id,role);}
+  if(overrides!=null){if(!permissions().containsAll(overrides.keySet())||overrides.values().stream().anyMatch(Objects::isNull))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Unknown permission or override");jdbc.update("DELETE FROM user_permission_overrides WHERE org_id=? AND user_id=?",actor.getOrgId(),id);for(var item:overrides.entrySet())jdbc.update("INSERT INTO user_permission_overrides(org_id,user_id,permission,allowed) VALUES(?,?,?,?)",actor.getOrgId(),id,item.getKey(),item.getValue());}
+  var request=org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();if(request!=null)request.removeAttribute("workspace.permissions."+actor.getOrgId()+"."+id,0);event(actor,"USER_ACCESS_UPDATED",id);
+ }
+ @Transactional public void saveRole(UserAccount actor,String code,String name,List<String> permissions){if(actor.getOrgRole()!=OrgRole.SUPER_USER)throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Only SUPER_USER can manage access roles");code=code(code);if(name==null||name.isBlank()||name.length()>100||permissions==null||!permissions().containsAll(permissions))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Enter a role name and valid permissions");jdbc.update("INSERT INTO workspace_roles(org_id,code,name,permissions_json) VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE name=VALUES(name),permissions_json=VALUES(permissions_json)",actor.getOrgId(),code,name.trim(),json.writeValueAsString(new HashSet<>(permissions)));event(actor,"ROLE_UPDATED",0);}
+ public List<Map<String,Object>> statuses(long org){return jdbc.queryForList("SELECT code,name,color,category,sort_order AS sortOrder,active FROM workspace_statuses WHERE org_id=? ORDER BY sort_order,code",org);}
+ public static String code(String value){if(value==null||!value.matches("[A-Z][A-Z0-9_]{0,49}"))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Use an uppercase code of up to 50 letters, digits and underscores");return value;}
+ @Transactional public void saveStatus(UserAccount actor,String code,Map<String,Object> body){code=code(code);boolean exists=jdbc.queryForObject("SELECT COUNT(*) FROM workspace_statuses WHERE org_id=? AND code=?",Integer.class,actor.getOrgId(),code)>0;require(actor,exists?"STATUSES.UPDATE":"STATUSES.CREATE");if(exists&&Boolean.FALSE.equals(body.get("active")))require(actor,"STATUSES.DELETE");String name=Objects.toString(body.get("name"),"").trim(),color=Objects.toString(body.get("color"),""),category=Objects.toString(body.get("category"),"");if(name.isBlank()||name.length()>100||!color.matches("#[0-9a-fA-F]{6}")||!Set.of("BACKLOG","TODO","IN_PROGRESS","DONE").contains(category))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Enter a name, color and status category");if(Map.of("BACKLOG","BACKLOG","TODO","TODO","COMPLETED","DONE").containsKey(code)&&!Map.of("BACKLOG","BACKLOG","TODO","TODO","COMPLETED","DONE").get(code).equals(category))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Core status categories must be preserved");boolean active=!Boolean.FALSE.equals(body.get("active"));if(!active&&Set.of("BACKLOG","TODO","COMPLETED").contains(code))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Core statuses must stay active");jdbc.update("INSERT INTO workspace_statuses(org_id,code,name,color,category,sort_order,active) VALUES(?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE name=VALUES(name),color=VALUES(color),category=VALUES(category),sort_order=VALUES(sort_order),active=VALUES(active)",actor.getOrgId(),code,name,color,category,WorkAccess.number(body.get("sortOrder")),active);event(actor,"WORKFLOW_UPDATED",0);}
+ public String validateStatus(long org,Object value){String raw=Objects.toString(value,"").trim().toUpperCase(Locale.ROOT).replace(' ','_').replace('-','_');String canonical=switch(raw){case "OPEN","NEW","TO_DO"->"TODO";case "DONE","CLOSED","RESOLVED"->"COMPLETED";case "ON_HOLD"->"BLOCKED";default->raw;};if(jdbc.queryForObject("SELECT COUNT(*) FROM workspace_statuses WHERE org_id=? AND code=? AND active=1",Integer.class,org,canonical)==0)throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Select an active status configured for your organization");return canonical;}
+ public void event(UserAccount actor,String type,long user){jdbc.update("INSERT INTO workspace_event_outbox(event_id,org_id,event_type,user_id) VALUES(?,?,?,?)",UUID.randomUUID().toString(),actor.getOrgId(),type,user);}
+}

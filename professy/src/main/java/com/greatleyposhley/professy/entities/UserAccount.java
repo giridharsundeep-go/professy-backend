@@ -39,7 +39,21 @@ public class UserAccount {
     private Gender gender;
 
     @Column(name = "password", nullable = true, length = 255)
+    @com.fasterxml.jackson.annotation.JsonProperty(access=com.fasterxml.jackson.annotation.JsonProperty.Access.WRITE_ONLY)
     private String password;
+
+    @Column(name="credential_version",nullable=false)
+    private int credentialVersion;
+    @Column(name="password_setup_required",nullable=false)
+    private boolean passwordSetupRequired;
+    @Column(name="email_verified",nullable=false)
+    private boolean emailVerified;
+    public boolean getEmailVerified(){return emailVerified;}
+    public void setEmailVerified(boolean value){emailVerified=value;}
+    public int getCredentialVersion(){return credentialVersion;}
+    public void setCredentialVersion(int value){credentialVersion=value;}
+    public boolean getPasswordSetupRequired(){return passwordSetupRequired;}
+    public void setPasswordSetupRequired(boolean value){passwordSetupRequired=value;}
 
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -91,6 +105,31 @@ public class UserAccount {
     @Enumerated(EnumType.STRING)
     @Column(name = "org_role", nullable = false, length = 20)
     private OrgRole orgRole = OrgRole.ORG_USER;
+
+    @Column(name="department_id") private Long departmentId;
+    @Column(name="function_id") private Long functionId;
+    @Column(name="division_id") private Long divisionId;
+    @Transient private String departmentName;
+    @Transient private String functionName;
+    @Transient private String divisionName;
+    @Transient private boolean organizationAssignmentProvided;
+    @Transient private boolean departmentProvided,functionProvided,divisionProvided;
+    public Long getDepartmentId(){return departmentId;}
+    public void setDepartmentId(Long value){departmentId=value;organizationAssignmentProvided=true;departmentProvided=true;}
+    public Long getFunctionId(){return functionId;}
+    public void setFunctionId(Long value){functionId=value;organizationAssignmentProvided=true;functionProvided=true;}
+    public Long getDivisionId(){return divisionId;}
+    public void setDivisionId(Long value){divisionId=value;organizationAssignmentProvided=true;divisionProvided=true;}
+    public String getDepartmentName(){return departmentName;}
+    public void setDepartmentName(String value){departmentName=value;}
+    public String getFunctionName(){return functionName;}
+    public void setFunctionName(String value){functionName=value;}
+    public String getDivisionName(){return divisionName;}
+    public void setDivisionName(String value){divisionName=value;}
+    @JsonIgnore public boolean isDepartmentProvided(){return departmentProvided;}
+    @JsonIgnore public boolean isFunctionProvided(){return functionProvided;}
+    @JsonIgnore public boolean isDivisionProvided(){return divisionProvided;}
+    @JsonIgnore public boolean isOrganizationAssignmentProvided(){return organizationAssignmentProvided;}
 
     public UserAccount() {
     }
@@ -296,7 +335,6 @@ public class UserAccount {
                 ", email='" + email + '\'' +
                 ", phone='" + phone + '\'' +
                 ", gender=" + gender +
-                ", password='" + password + '\'' +
                 ", createdAt=" + createdAt +
                 ", updatedAt=" + updatedAt +
                 ", isActive=" + isActive +

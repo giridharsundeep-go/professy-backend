@@ -1,11 +1,14 @@
 package com.greatleyposhley.professy.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "testcases")
@@ -39,6 +42,24 @@ public class Testcases {
 
     @Column(name = "actual_result", columnDefinition = "TEXT")
     private String actualResult;
+
+    @Column(name = "test_type", length = 50)
+    private String type = "Functional";
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "testcase_tags", joinColumns = @JoinColumn(name = "testcase_id"),
+            uniqueConstraints = @UniqueConstraint(name = "uk_testcase_tag", columnNames = {"testcase_id", "tag"}))
+    @Column(name = "tag", nullable = false, length = 40)
+    private Set<String> tags = new LinkedHashSet<>();
+
+    @Transient
+    @JsonIgnore
+    private boolean tagsProvided;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "issue_id")
+    @JsonIgnoreProperties({"project", "assignee", "reporter", "creator", "user", "allocations", "hibernateLazyInitializer", "handler"})
+    private Issues issue;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 50, nullable = false)
@@ -87,6 +108,8 @@ public class Testcases {
             foreignKey = @ForeignKey(name = "fk_testcases_user")
     )
     private UserAccount user;
+    @Transient @JsonIgnore private boolean userProvided;
+    @JsonIgnore public boolean isUserProvided(){return userProvided;}
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
@@ -133,6 +156,15 @@ public class Testcases {
 
     public String getActualResult() { return actualResult; }
     public void setActualResult(String actualResult) { this.actualResult = actualResult; }
+    public String getType() { return type; }
+    public void setType(String type) { this.type = type; }
+
+    public Set<String> getTags() { return tags; }
+    public void setTags(Set<String> tags) { this.tags = tags == null ? new LinkedHashSet<>() : new LinkedHashSet<>(tags); this.tagsProvided = true; }
+    @JsonIgnore
+    public boolean isTagsProvided() { return tagsProvided; }
+    public Issues getIssue() { return issue; }
+    public void setIssue(Issues issue) { this.issue = issue; }
 
     public TestCaseStatus getStatus() { return status; }
     public void setStatus(TestCaseStatus status) { this.status = status; }
@@ -156,7 +188,8 @@ public class Testcases {
     public void setTask(Tasks task) { this.task = task; }
 
     public UserAccount getUser() { return user; }
-    public void setUser(UserAccount user) { this.user = user; }
+    public void setUser(UserAccount user) {
+        this.userProvided=true; this.user = user; }
 
     public UserAccount getCreator() { return creator; }
     public void setCreator(UserAccount creator) { this.creator = creator; }

@@ -33,7 +33,7 @@ public class AuthService {
         }
 
         String email = request.get("email") != null
-                ? request.get("email").toString().trim()
+                ? request.get("email").toString().trim().toLowerCase(java.util.Locale.ROOT)
                 : null;
 
         String password = request.get("password") != null
@@ -58,7 +58,7 @@ public class AuthService {
             throw new RuntimeException("User account is inactive");
         }
 
-        if (!passwordEncoder.matches(
+        if (user.getPasswordSetupRequired() || user.getPassword()==null || !passwordEncoder.matches(
                 password,
                 user.getPassword())) {
 
@@ -75,6 +75,8 @@ public class AuthService {
         Map<String, Object> userData = new HashMap<>();
 
         userData.put("id", user.getId());
+        userData.put("orgId", user.getOrgId());
+        userData.put("orgRole", user.getOrgRole());
         userData.put("firstName", user.getFirstName());
         userData.put("lastName", user.getLastName());
         userData.put("email", user.getEmail());

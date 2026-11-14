@@ -18,7 +18,8 @@ public interface ProjectTeamsRepository extends JpaRepository<ProjectTeams, Long
     int deleteAllForProject(@Param("projectId") Long projectId);
 
     @Modifying
-    @Query(value = "INSERT INTO project_teams (project_id, team_id, user_id) VALUES (:projectId, :teamId, :userId)", nativeQuery = true)
+    // Native inserts bypass Hibernate's @CreationTimestamp on assignedAt.
+    @Query(value = "INSERT INTO project_teams (project_id, team_id, user_id, assigned_at) VALUES (:projectId, :teamId, :userId, CURRENT_TIMESTAMP)", nativeQuery = true)
     int insertProjectTeam(
             @Param("projectId") Long projectId,
             @Param("teamId") Long teamId,

@@ -14,7 +14,11 @@ java {
 }
 
 repositories {
-	mavenCentral()
+	    maven {
+        url = uri(System.getenv('INSTRU_MAVEN_URL') ?: 'http://127.0.0.1:8094/maven/')
+        allowInsecureProtocol = true
+    }
+mavenCentral()
 }
 
 dependencies {
@@ -22,6 +26,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-rest'
 	implementation 'org.springframework.boot:spring-boot-starter-jdbc'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-kafka'
 	runtimeOnly 'com.mysql:mysql-connector-j'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	implementation("io.jsonwebtoken:jjwt-api:0.12.6")
@@ -34,8 +39,25 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.2.0'
 
+    implementation 'com.greatleyposhley.instru:instru-spring-boot-starter:0.4.2'
 }
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+// Radar local bootRun configuration: read the private key from the ignored suite runtime.
+def radarLocalKeyFile = new File(System.getProperty('user.home'), 'Documents/projects/greatley-poshley-suite/.runtime/secrets/instru-local.env')
+def radarLocalKeys = new Properties()
+if (radarLocalKeyFile.isFile()) radarLocalKeyFile.withInputStream { radarLocalKeys.load(it) }
+def radarLocalKey = radarLocalKeys.getProperty('INSTRU_ASTRA_CORE_KEY')
+if (radarLocalKey) {
+    tasks.named('bootRun') {
+        environment 'INSTRU_ENDPOINT', 'http://127.0.0.1:8094'
+        environment 'INSTRU_KEY', radarLocalKey
+        environment 'INSTRU_VERSION', System.getenv('INSTRU_VERSION') ?: 'local'
+        environment 'INSTRU_INSTANCE_ID', System.getenv('INSTRU_INSTANCE_ID') ?: 'professy-local'
+        def privateServiceConfig = new File(System.getProperty('user.home'), '.config/professy/core.properties')
+        if (privateServiceConfig.isFile()) args "--spring.config.additional-location=optional:file:${privateServiceConfig.absolutePath}"
+    }
 }

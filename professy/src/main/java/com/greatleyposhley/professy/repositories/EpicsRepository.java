@@ -17,7 +17,7 @@ public interface EpicsRepository extends JpaRepository<Epics, Long> {
     );
 
     // Paginated query: Spring Data adds LIMIT/OFFSET and a count query.
-    Page<Epics> findAllByOrgIdAndProject_IdOrderByCreatedAtDesc(
+    Page<Epics> findPageByOrgIdAndProject_IdOrderByCreatedAtDesc(
             Long orgId,
             Long projectId,
             Pageable pageable

@@ -12,14 +12,14 @@ import java.util.List;
 public class CorsConfig {
 
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
+    public CorsConfigurationSource corsConfigurationSource(@org.springframework.beans.factory.annotation.Value("${app.cors.allowed-origin-patterns:http://localhost:[*],http://127.0.0.1:[*]}") String origins) {
 
         CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost:4200",
-                "http://127.0.0.1:4200"
-        ));
+        // Local development tools allocate ephemeral ports. Only loopback origins
+        // are trusted by default; deployments supply their exact HTTPS origins.
+        configuration.setAllowedOriginPatterns(java.util.Arrays.stream(origins.split(",")).map(String::trim).filter(value -> !value.isBlank()).toList());
+        configuration.setMaxAge(3600L);
 
         configuration.setAllowedMethods(List.of(
                 "GET",

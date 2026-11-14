@@ -1,0 +1,8 @@
+package com.greatleyposhley.professy.collaboration;
+import com.greatleyposhley.professy.entities.*;import com.greatleyposhley.professy.repositories.UserAccountRepository;
+import org.junit.jupiter.api.Test;import org.springframework.jdbc.core.JdbcTemplate;import org.springframework.web.server.ResponseStatusException;import java.util.*;
+import static org.mockito.Mockito.*;import static org.junit.jupiter.api.Assertions.*;
+class DocumentAccessTest {
+ @Test void restrictedViewerCannotWriteThroughLegacyApi(){var jdbc=mock(JdbcTemplate.class);var access=spy(new WorkAccess(mock(UserAccountRepository.class),jdbc,mock(WorkspacePolicy.class)));var actor=new UserAccount();actor.setId(3L);actor.setOrgId(7L);doReturn(actor).when(access).actor();when(jdbc.queryForList(startsWith("SELECT p.id"),eq(Long.class),eq(7L),eq(3L),eq(3L))).thenReturn(List.of(10L));when(jdbc.queryForObject(startsWith("SELECT COUNT(*) FROM doc_pages"),eq(Integer.class),eq(10L),eq(7L),eq(3L),eq(3L))).thenReturn(0);var docs=new DocumentAccess(access);assertDoesNotThrow(()->docs.require(7L,10L,false));var error=assertThrows(ResponseStatusException.class,()->docs.require(7L,10L,true));assertEquals(403,error.getStatusCode().value());}
+ @Test void organizationMismatchFailsBeforeDocumentLookup(){var access=spy(new WorkAccess(mock(UserAccountRepository.class),mock(JdbcTemplate.class),mock(WorkspacePolicy.class)));var actor=new UserAccount();actor.setId(3L);actor.setOrgId(7L);doReturn(actor).when(access).actor();var docs=new DocumentAccess(access);assertThrows(ResponseStatusException.class,()->docs.require(8L,10L,false));verifyNoInteractions(access.jdbc);}
+}

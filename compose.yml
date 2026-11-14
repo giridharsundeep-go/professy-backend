@@ -1,0 +1,33 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: professy
+      MYSQL_USER: professy_app
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-local_professy_backend_mysql_password}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-local_only_change_root_password}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    restart: unless-stopped
+  app:
+    build: ./professy
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: "8080"
+      DB_URL: jdbc:mysql://mysql:3306/professy?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: professy_app
+      DB_PASSWORD: ${MYSQL_PASSWORD:-local_professy_backend_mysql_password}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  mysql-data:

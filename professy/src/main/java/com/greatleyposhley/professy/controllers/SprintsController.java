@@ -87,10 +87,7 @@ public class SprintsController {
 
         } catch (Exception ex) {
 
-            return error(
-                    ex.getMessage(),
-                    HttpStatus.INTERNAL_SERVER_ERROR
-            );
+            return error("Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -135,10 +132,7 @@ public class SprintsController {
 
         } catch (Exception ex) {
 
-            return error(
-                    ex.getMessage(),
-                    HttpStatus.INTERNAL_SERVER_ERROR
-            );
+            return error("Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -190,10 +184,7 @@ public class SprintsController {
 
         } catch (Exception ex) {
 
-            return error(
-                    ex.getMessage(),
-                    HttpStatus.INTERNAL_SERVER_ERROR
-            );
+            return error("Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -247,10 +238,7 @@ public class SprintsController {
 
         } catch (Exception ex) {
 
-            return error(
-                    ex.getMessage(),
-                    HttpStatus.INTERNAL_SERVER_ERROR
-            );
+            return error("Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -302,10 +290,7 @@ public class SprintsController {
 
         } catch (Exception ex) {
 
-            return error(
-                    ex.getMessage(),
-                    HttpStatus.INTERNAL_SERVER_ERROR
-            );
+            return error("Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 

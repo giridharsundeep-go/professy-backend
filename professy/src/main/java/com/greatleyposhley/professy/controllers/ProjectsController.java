@@ -44,7 +44,7 @@ public class ProjectsController {
         } catch (IllegalArgumentException ex) {
             return error(ex.getMessage(), HttpStatus.BAD_REQUEST);
         } catch (Exception ex) {
-            return error(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+            return error("Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -58,7 +58,7 @@ public class ProjectsController {
         } catch (IllegalArgumentException ex) {
             return error(ex.getMessage(), HttpStatus.BAD_REQUEST);
         } catch (Exception ex) {
-            return error(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+            return error("Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -75,7 +75,7 @@ public class ProjectsController {
         } catch (IllegalArgumentException ex) {
             return error(ex.getMessage(), HttpStatus.BAD_REQUEST);
         } catch (Exception ex) {
-            return error(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+            return error("Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -94,7 +94,7 @@ public class ProjectsController {
         } catch (IllegalArgumentException ex) {
             return error(ex.getMessage(), HttpStatus.BAD_REQUEST);
         } catch (Exception ex) {
-            return error(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+            return error("Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -114,7 +114,7 @@ public class ProjectsController {
         } catch (IllegalArgumentException ex) {
             return error(ex.getMessage(), HttpStatus.BAD_REQUEST);
         } catch (Exception ex) {
-            return error(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+            return error("Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -133,7 +133,7 @@ public class ProjectsController {
         } catch (IllegalArgumentException ex) {
             return error(ex.getMessage(), HttpStatus.BAD_REQUEST);
         } catch (Exception ex) {
-            return error(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+            return error("Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 

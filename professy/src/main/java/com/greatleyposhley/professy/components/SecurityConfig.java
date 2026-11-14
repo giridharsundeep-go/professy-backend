@@ -22,11 +22,15 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(
-            HttpSecurity http) throws Exception {
+            HttpSecurity http, com.greatleyposhley.professy.collaboration.WorkAccess access, org.springframework.transaction.PlatformTransactionManager manager, jakarta.persistence.EntityManager entityManager, tools.jackson.databind.ObjectMapper json, com.greatleyposhley.professy.collaboration.TicketActors ticketActors, @org.springframework.beans.factory.annotation.Value("${app.internal-service-token:}") String serviceToken) throws Exception {
 
         http
                 .cors(cors -> {})
                 .csrf(csrf -> csrf.disable())
+                .securityContext(context -> context.securityContextRepository(new org.springframework.security.web.context.RequestAttributeSecurityContextRepository()))
+                .exceptionHandling(errors -> errors
+                        .authenticationEntryPoint((request,response,error) -> securityError(response,401,"Sign in to continue"))
+                        .accessDeniedHandler((request,response,error) -> securityError(response,403,"Access denied")))
                 .formLogin(form -> form.disable())
                 .httpBasic(basic -> basic.disable())
                 .sessionManagement(session ->
@@ -39,12 +43,19 @@ public class SecurityConfig {
                         // Allow CORS preflight requests
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
+                        // Service contracts are inaccessible to browser accounts.
+                        .requestMatchers("/api/internal/**").hasRole("EVENT_SERVICE")
+                        // Meeting runtime credentials are validated by the scoped runtime controller.
+                        .requestMatchers("/api/meeting-runtime/**", "/api/delivery-worker/**").permitAll()
                         // Public authentication APIs
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/auth/login","/api/auth/handoff/consume","/api/auth/register","/api/auth/organisation/validate","/api/auth/password/request","/api/auth/password/reset","/api/auth/email/verify").permitAll()
+                        .requestMatchers("/api/auth/user/**","/api/auth/organisation/**").hasRole("ORG_ADMIN")
                         .requestMatchers(
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**"
                         ).permitAll()
+                        // Sanitized, unguessable public-by-link avatar images only.
+                        .requestMatchers(HttpMethod.GET, "/media/avatars/*").permitAll()
                         // User account APIs
                         .requestMatchers("/api/user/**").authenticated()
                         .requestMatchers("/api/users/**").authenticated()
@@ -80,7 +91,17 @@ public class SecurityConfig {
                         UsernamePasswordAuthenticationFilter.class
                 );
 
+        http.addFilterAfter(new com.greatleyposhley.professy.collaboration.ServiceAuthenticationFilter(serviceToken), JwtAuthenticationFilter.class);
+        http.addFilterAfter(new com.greatleyposhley.professy.collaboration.WorkRequestFilter(access,manager,entityManager,json,ticketActors), JwtAuthenticationFilter.class);
         return http.build();
+    }
+
+    private static void securityError(jakarta.servlet.http.HttpServletResponse response,int status,String message)throws java.io.IOException {
+        if(response.isCommitted())return;
+        response.setStatus(status);
+        response.setContentType("application/json");
+        response.setHeader("Cache-Control","no-store");
+        response.getWriter().write("{\"message\":\""+message+"\"}");
     }
 
     @Bean

@@ -23,7 +23,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "*")
 public class AuthController {
 
     private final AuthService authService;
@@ -54,22 +53,22 @@ public class AuthController {
         try {
             return ResponseEntity.ok(authService.login(request));
         } catch (RuntimeException ex) {
+            String reason = ex.getMessage();
             Map<String, Object> error = new HashMap<>();
-            error.put("message", ex.getMessage());
-
-            if ("User not found".equals(ex.getMessage())) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+            if ("Request body is required".equals(reason)
+                    || "Email is required".equals(reason)
+                    || "Password is required".equals(reason)) {
+                error.put("message", reason);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
             }
-
-            if ("Invalid credentials".equals(ex.getMessage())) {
+            if ("User not found".equals(reason)
+                    || "Invalid credentials".equals(reason)
+                    || "User account is inactive".equals(reason)) {
+                error.put("message", "Invalid email or password");
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
             }
-
-            if ("User account is inactive".equals(ex.getMessage())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
-            }
-
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            error.put("message", "Unable to sign in right now");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
 
@@ -121,7 +120,7 @@ public class AuthController {
             List<UserAccount> users = userService.getAllUsers(orgId);
 
             // Do not expose password hashes.
-            users.forEach(user -> user.setPassword(null));
+
 
             response.put("data", users);
             response.put("success", true);
@@ -228,8 +227,7 @@ public class AuthController {
 
             UserAccount savedUser = userService.createUser(user);
 
-            // Never return the stored password hash.
-            savedUser.setPassword(null);
+            // Password serialization is write-only on UserAccount.
 
             response.put("success", true);
             response.put("message", "User created successfully");

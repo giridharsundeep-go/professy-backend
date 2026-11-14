@@ -20,7 +20,8 @@ public interface ProjectIndividualMembersRepository extends JpaRepository<Projec
     int deleteAllForProject(@Param("projectId") Long projectId);
 
     @Modifying
-    @Query(value = "INSERT INTO project_individual_members (project_id, user_account_id, user_id) VALUES (:projectId, :userAccountId, :userId)", nativeQuery = true)
+    // Native inserts bypass Hibernate's @CreationTimestamp on assignedAt.
+    @Query(value = "INSERT INTO project_individual_members (project_id, user_account_id, user_id, assigned_at) VALUES (:projectId, :userAccountId, :userId, CURRENT_TIMESTAMP)", nativeQuery = true)
     int insertProjectIndividual(
             @Param("projectId") Long projectId,
             @Param("userAccountId") Long userAccountId,

@@ -11,12 +11,14 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/board-filters")
-@CrossOrigin
 public class BoardFilterController {
 
     private final BoardFilterRepository boardFilterRepository;
+    private final com.greatleyposhley.professy.collaboration.WorkAccess access;
+    private void check(Long id,boolean edit){var actor=access.actor();access.require(edit?"BOARDS.UPDATE":"BOARDS.READ");var rows=access.jdbc.queryForList("SELECT project_id FROM boards WHERE id=? AND org_id=?",Long.class,id,actor.getOrgId());if(rows.isEmpty())throw new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND,"Board not found");access.project(rows.getFirst());}
 
-    public BoardFilterController(BoardFilterRepository boardFilterRepository) {
+    public BoardFilterController(BoardFilterRepository boardFilterRepository, com.greatleyposhley.professy.collaboration.WorkAccess access) {
+        this.access=access;
         this.boardFilterRepository = boardFilterRepository;
     }
 
@@ -29,6 +31,7 @@ public class BoardFilterController {
     public ResponseEntity<List<BoardFilter>> getFiltersByBoard(
             @PathVariable Long boardId
     ) {
+        check(boardId,false);
         return ResponseEntity.ok(
                 boardFilterRepository.findByBoardId(boardId)
         );
@@ -44,6 +47,7 @@ public class BoardFilterController {
             @PathVariable Long boardId,
             @PathVariable String filterType
     ) {
+        check(boardId,false);
         return ResponseEntity.ok(
                 boardFilterRepository.findByBoardIdAndFilterType(
                         boardId,
@@ -62,6 +66,7 @@ public class BoardFilterController {
             @RequestBody BoardFilter boardFilter
     ) {
 
+        check(boardFilter.getBoardId(),true);
         BoardFilter saved =
                 boardFilterRepository.save(boardFilter);
 
@@ -89,6 +94,7 @@ public class BoardFilterController {
                                 )
                         );
 
+        check(existing.getBoardId(),true);check(request.getBoardId(),true);
         existing.setBoardId(request.getBoardId());
         existing.setFilterType(request.getFilterType());
         existing.setFilterValue(request.getFilterValue());
@@ -114,6 +120,7 @@ public class BoardFilterController {
             );
         }
 
+        check(boardFilterRepository.findById(id).orElseThrow().getBoardId(),true);
         boardFilterRepository.deleteById(id);
 
         return ResponseEntity.noContent().build();
@@ -129,6 +136,7 @@ public class BoardFilterController {
             @PathVariable Long boardId
     ) {
 
+        check(boardId,true);
         boardFilterRepository.deleteByBoardId(boardId);
 
         return ResponseEntity.noContent().build();
@@ -145,11 +153,18 @@ public class BoardFilterController {
             @PathVariable String filterType
     ) {
 
+        check(boardId,true);
         boardFilterRepository.deleteByBoardIdAndFilterType(
                 boardId,
                 filterType
         );
 
         return ResponseEntity.noContent().build();
+    }
+    @PutMapping("/board/{boardId}") @org.springframework.transaction.annotation.Transactional
+    public Object replace(@PathVariable Long boardId,@RequestBody List<BoardFilter> filters){
+        check(boardId,true);if(filters.size()>10)throw new IllegalArgumentException("Too many board filters");
+        for(var filter:filters){if(!java.util.Set.of("TEAM","SPRINT","PRIORITY","STATUS","TYPE").contains(filter.getFilterType())||filter.getFilterValue()==null||filter.getFilterValue().length()>255)throw new IllegalArgumentException("Invalid board filter");filter.setId(null);filter.setBoardId(boardId);}
+        boardFilterRepository.deleteByBoardId(boardId);boardFilterRepository.flush();return boardFilterRepository.saveAll(filters);
     }
 }

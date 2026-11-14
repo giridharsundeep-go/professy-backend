@@ -9,6 +9,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.Set;
 
 @Service
 public class TestcasesService {
@@ -20,6 +25,7 @@ public class TestcasesService {
     private final TasksRepository tasksRepository;
     private final UserAccountRepository usersRepository;
     private final TestSuitesRepository testSuitesRepository;
+    private final IssuesRepository issuesRepository;
 
 
     @Autowired
@@ -29,7 +35,8 @@ public class TestcasesService {
                             StoriesRepository storiesRepository,
                             TasksRepository tasksRepository,
                             UserAccountRepository usersRepository,
-                            TestSuitesRepository testSuitesRepository) {
+                            TestSuitesRepository testSuitesRepository,
+                            IssuesRepository issuesRepository) {
         this.testcasesRepository = testcasesRepository;
         this.projectsRepository = projectsRepository;
         this.epicsRepository = epicsRepository;
@@ -37,6 +44,7 @@ public class TestcasesService {
         this.tasksRepository = tasksRepository;
         this.usersRepository = usersRepository;
         this.testSuitesRepository = testSuitesRepository;
+        this.issuesRepository = issuesRepository;
     }
 
     @Transactional(readOnly = true)
@@ -58,6 +66,7 @@ public class TestcasesService {
     @Transactional
     public Testcases saveTestcase(Long orgId, Testcases testcase) {
         testcase.setOrgId(orgId);
+        if (testcase.isTagsProvided()) testcase.setTags(normalizeTags(testcase.getTags()));
 
         /*
          * ============================================================
@@ -67,7 +76,7 @@ public class TestcasesService {
         if (testcase.getId() != null) {
 
             Testcases existing = testcasesRepository
-                    .findById(testcase.getId())
+                    .findByIdAndOrgId(testcase.getId(), orgId)
                     .orElseThrow(() ->
                             new RuntimeException(
                                     "Test case not found: " + testcase.getId()
@@ -82,6 +91,13 @@ public class TestcasesService {
             if (testcase.getTitle() != null) {
                 existing.setTitle(testcase.getTitle());
             }
+            if (testcase.isTagsProvided()) existing.setTags(testcase.getTags());
+            if (testcase.getPreconditions() != null) existing.setPreconditions(testcase.getPreconditions());
+            if (testcase.getSteps() != null) existing.setSteps(testcase.getSteps());
+            if (testcase.getActualResult() != null) existing.setActualResult(testcase.getActualResult());
+            if (testcase.getPriority() != null) existing.setPriority(testcase.getPriority());
+            if (testcase.getTestCaseCode() != null) existing.setTestCaseCode(testcase.getTestCaseCode());
+            if (testcase.getType() != null) existing.setType(testcase.getType());
 
             if (testcase.getDescription() != null) {
                 existing.setDescription(testcase.getDescription());
@@ -144,7 +160,7 @@ public class TestcasesService {
             if (testcase.getTestSuite() != null
                     && testcase.getTestSuite().getId() != null) {
 
-                testcase.setTestSuite(
+                existing.setTestSuite(
                         testSuitesRepository.findById(
                                 testcase.getTestSuite().getId()
                         ).orElseThrow(() ->
@@ -204,6 +220,7 @@ public class TestcasesService {
              * User
              * --------------------------------------------------------
              */
+            if(testcase.isUserProvided() && testcase.getUser()==null)existing.setUser(null);
             if (testcase.getUser() != null
                     && testcase.getUser().getId() != null) {
 
@@ -464,111 +481,106 @@ public class TestcasesService {
         testcasesRepository.deleteById(id);
     }
 
+
+    @Transactional(readOnly = true)
+    public List<Testcases> filterByTags(Long orgId, Long projectId, Collection<String> tags) {
+        Set<String> normalized = normalizeTags(tags);
+        if (normalized.isEmpty()) return projectId == null ? getAllTestcases(orgId) : getTestcasesByProjectId(orgId, projectId);
+        return testcasesRepository.findByTags(orgId, projectId, List.copyOf(normalized));
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> getTags(Long orgId, Long projectId) {
+        return testcasesRepository.findTags(orgId, projectId);
+    }
+
     @Transactional
-    public Testcases assignTestCase(Long orgId, Long testCaseId,
-                                    String type,
-                                    Long itemId) {
+    public Testcases updateTags(Long orgId, Long id, Collection<String> tags) {
+        Testcases testcase = getTestcaseById(orgId, id);
+        testcase.setTags(normalizeTags(tags));
+        return testcasesRepository.save(testcase);
+    }
 
-        Testcases testcase = testcasesRepository
-                .findById(testCaseId)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Test case not found: " + testCaseId
-                        )
-                );
-
-        switch (type.toUpperCase()) {
-
-            case "STORY":
-
-                testcase.setStory(
-                        storiesRepository
-                                .findById(itemId)
-                                .orElseThrow(() ->
-                                        new RuntimeException(
-                                                "Story not found: " + itemId
-                                        )
-                                )
-                );
-
-                // A testcase should not simultaneously belong to another level.
-                testcase.setTask(null);
-                testcase.setEpic(null);
-
-                break;
-
-
-            case "TASK":
-
-                testcase.setTask(
-                        tasksRepository
-                                .findById(itemId)
-                                .orElseThrow(() ->
-                                        new RuntimeException(
-                                                "Task not found: " + itemId
-                                        )
-                                )
-                );
-
-                testcase.setStory(null);
-                testcase.setEpic(null);
-
-                break;
-
-
-            default:
-                throw new IllegalArgumentException(
-                        "Unsupported test case assignment type: " + type
-                );
+    static Set<String> normalizeTags(Collection<String> values) {
+        Set<String> tags = new LinkedHashSet<>();
+        if (values == null) return tags;
+        for (String value : values) {
+            if (value == null) continue;
+            String tag = value.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+            if (tag.isEmpty()) continue;
+            if (tag.length() > 40) throw new IllegalArgumentException("Tags must contain at most 40 characters");
+            tags.add(tag);
         }
+        if (tags.size() > 20) throw new IllegalArgumentException("A test case can have at most 20 tags");
+        return tags;
+    }
 
+    @Transactional
+    public Testcases assignTestCase(Long orgId, Long testCaseId, String type, Long itemId) {
+        Testcases testcase = getTestcaseById(orgId, testCaseId);
+        if (itemId == null || itemId <= 0) throw new IllegalArgumentException("A valid work item is required");
+        switch (type.toUpperCase(Locale.ROOT)) {
+            case "EPIC":
+                Epics epic = epicsRepository.findById(itemId).orElseThrow(() -> new EntityNotFoundException("Epic not found"));
+                requireSameProject(testcase, epic.getProject(), orgId);
+                clearAllocation(testcase);
+                testcase.setEpic(epic);
+                break;
+            case "STORY":
+                Stories story = storiesRepository.findById(itemId).orElseThrow(() -> new EntityNotFoundException("Story not found"));
+                requireSameProject(testcase, story.getProject(), orgId);
+                clearAllocation(testcase);
+                testcase.setStory(story);
+                break;
+            case "TASK":
+                Tasks task = tasksRepository.findById(itemId).orElseThrow(() -> new EntityNotFoundException("Task not found"));
+                requireSameProject(testcase, task.getStory() == null ? null : task.getStory().getProject(), orgId);
+                clearAllocation(testcase);
+                testcase.setTask(task);
+                break;
+            case "ISSUE":
+                Issues issue = issuesRepository.findById(itemId).orElseThrow(() -> new EntityNotFoundException("Issue not found"));
+                requireSameProject(testcase, issue.getProject(), orgId);
+                clearAllocation(testcase);
+                testcase.setIssue(issue);
+                break;
+            default: throw new IllegalArgumentException("Unsupported test case assignment type: " + type);
+        }
         return testcasesRepository.save(testcase);
     }
 
     @Transactional
-    public Testcases unassignTestCase(Long orgId, Long testCaseId,
-                                      String type,
-                                      Long itemId) {
-
-        Testcases testcase = testcasesRepository
-                .findById(testCaseId)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Test case not found: " + testCaseId
-                        )
-                );
-
-        switch (type.toUpperCase()) {
-
+    public Testcases unassignTestCase(Long orgId, Long testCaseId, String type, Long itemId) {
+        Testcases testcase = getTestcaseById(orgId, testCaseId);
+        switch (type.toUpperCase(Locale.ROOT)) {
+            case "EPIC":
+                if (testcase.getEpic() != null && Objects.equals(testcase.getEpic().getId(), itemId)) testcase.setEpic(null);
+                break;
             case "STORY":
-
-                if (testcase.getStory() != null
-                        && testcase.getStory().getId().equals(itemId)) {
-
-                    testcase.setStory(null);
-                }
-
+                if (testcase.getStory() != null && Objects.equals(testcase.getStory().getId(), itemId)) testcase.setStory(null);
                 break;
-
-
             case "TASK":
-
-                if (testcase.getTask() != null
-                        && testcase.getTask().getId().equals(itemId)) {
-
-                    testcase.setTask(null);
-                }
-
+                if (testcase.getTask() != null && Objects.equals(testcase.getTask().getId(), itemId)) testcase.setTask(null);
                 break;
-
-
-            default:
-                throw new IllegalArgumentException(
-                        "Unsupported test case assignment type: " + type
-                );
+            case "ISSUE":
+                if (testcase.getIssue() != null && Objects.equals(testcase.getIssue().getId(), itemId)) testcase.setIssue(null);
+                break;
+            default: throw new IllegalArgumentException("Unsupported test case assignment type: " + type);
         }
-
         return testcasesRepository.save(testcase);
     }
 
+    private void requireSameProject(Testcases testcase, Projects project, Long orgId) {
+        if (project == null || testcase.getProject() == null || !Objects.equals(project.getOrgId(), orgId)
+                || !Objects.equals(testcase.getProject().getId(), project.getId())) {
+            throw new IllegalArgumentException("Choose a work item from this test case's project");
+        }
+    }
+
+    private void clearAllocation(Testcases testcase) {
+        testcase.setEpic(null);
+        testcase.setStory(null);
+        testcase.setTask(null);
+        testcase.setIssue(null);
+    }
 }

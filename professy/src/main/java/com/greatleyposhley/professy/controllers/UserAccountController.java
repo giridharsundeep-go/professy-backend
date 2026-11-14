@@ -37,12 +37,7 @@ public class UserAccountController {
 
         UserAccount authenticatedUser = orgComponent.getAuthenticatedUser(authentication);
 
-        List<UserAccount> userAccounts;
-        if (authenticatedUser.getOrgRole().equals(OrgRole.SUPER_USER)) {
-            userAccounts = userAccountService.getAllUsers(authenticatedUser.getOrgId());
-        } else {
-            userAccounts = userAccountService.getUsersByOrgRole(authenticatedUser.getOrgId(), OrgRole.ORG_USER);
-        }
+        List<UserAccount> userAccounts = userAccountService.getAllUsers(authenticatedUser.getOrgId());
 
         return ResponseEntity.ok(userAccounts);
     }
@@ -117,7 +112,6 @@ public class UserAccountController {
             Authentication authentication,
             @RequestBody UserAccount user) {
 
-        System.out.println(user);
         Long orgId = orgComponent.getOrgId(authentication);
 
         try {

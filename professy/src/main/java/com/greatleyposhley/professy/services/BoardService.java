@@ -27,6 +27,7 @@ public class BoardService {
     @Transactional(readOnly = true)
     public Board getBoardById(Long orgId, Long id) {
         return boardRepository.findById(id)
+                .filter(b -> orgId.equals(b.getOrgId()))
                 .orElseThrow(() ->
                         new RuntimeException("Board not found with id: " + id)
                 );
@@ -143,6 +144,7 @@ public class BoardService {
 
         existing.setProjectId(board.getProjectId());
         existing.setName(board.getName().trim());
+        existing.setDescription(board.getDescription());
 
         if (board.getOwnerUserId() != null) {
             existing.setOwnerUserId(board.getOwnerUserId());

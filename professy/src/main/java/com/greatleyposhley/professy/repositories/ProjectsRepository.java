@@ -13,11 +13,8 @@ import java.util.Map;
 @Repository
 public interface ProjectsRepository extends CrudRepository<Projects, Long> {
 
-    @Query(value = "SELECT * FROM projects WHERE org_id = :orgId AND user_id = :userId ORDER BY created_at DESC", nativeQuery = true)
-    List<Map<String, Object>> findProjectRowsByUserId(
-            @Param("orgId") Long orgId,
-            @Param("userId") Long userId
-    );
+    @Query(value = "SELECT p.* FROM projects p WHERE p.org_id=:orgId ORDER BY p.created_at DESC", nativeQuery = true)
+    List<Map<String, Object>> findProjectRowsByOrgId(@Param("orgId") Long orgId);
 
     @Query(value = "SELECT * FROM projects WHERE org_id = :orgId AND product_id = :productId ORDER BY created_at DESC", nativeQuery = true)
     List<Map<String, Object>> findProjectRowsByProductId(

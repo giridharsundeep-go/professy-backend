@@ -14,21 +14,24 @@ import java.util.List;
 @Transactional
 public class DocPageService {
 
+ private final com.greatleyposhley.professy.collaboration.DocumentAccess access;
  private final DocPageRepository repository;
  private final DocSpaceRepository spaces;
 
- public DocPageService(DocPageRepository repository, DocSpaceRepository spaces) {
+ public DocPageService(DocPageRepository repository, DocSpaceRepository spaces, com.greatleyposhley.professy.collaboration.DocumentAccess access) {
+  this.access=access;
   this.repository = repository;
   this.spaces = spaces;
  }
 
  @Transactional(readOnly = true)
  public List<DocPage> getAll(Long orgId) {
-  return repository.findAllByOrgId(orgId);
+  var allowed=access.readable();return repository.findAllByOrgId(orgId).stream().filter(page->allowed.contains(page.getId())).toList();
  }
 
  @Transactional(readOnly = true)
  public DocPage getById(Long orgId, Long id) {
+  access.require(orgId,id,false);
   return repository.findByOrgIdAndId(orgId, id)
           .orElseThrow(() -> new ResponseStatusException(
                   HttpStatus.NOT_FOUND, "Page not found"));
@@ -42,6 +45,7 @@ public class DocPageService {
  }
 
  public DocPage update(Long orgId, Long id, DocPage input) {
+  access.require(orgId,id,true);
   DocPage e = getById(orgId, id);
 
   Long spaceId = input.getSpaceId() != null
@@ -62,6 +66,7 @@ public class DocPageService {
  }
 
  public void delete(Long orgId, Long id) {
+  access.require(orgId,id,true);
   repository.delete(getById(orgId, id));
  }
 

@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS delivery_support_details (
+ case_id BIGINT PRIMARY KEY,category VARCHAR(20) NOT NULL DEFAULT 'INCIDENT',resolution TEXT NULL,
+ FOREIGN KEY(case_id) REFERENCES delivery_support(id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS delivery_support_activity (
+ id BIGINT AUTO_INCREMENT PRIMARY KEY,org_id BIGINT NOT NULL,case_id BIGINT NOT NULL,actor_id BIGINT NOT NULL,
+ actor_name VARCHAR(240) NOT NULL,kind VARCHAR(20) NOT NULL,body TEXT NOT NULL,
+ created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),INDEX case_activity(org_id,case_id,id),
+ FOREIGN KEY(case_id) REFERENCES delivery_support(id) ON DELETE CASCADE
+);

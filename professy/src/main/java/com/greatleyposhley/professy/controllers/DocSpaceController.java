@@ -17,7 +17,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/docs/spaces")
-@CrossOrigin(origins = "*")
 public class DocSpaceController {
 
     private final DocSpaceService service;

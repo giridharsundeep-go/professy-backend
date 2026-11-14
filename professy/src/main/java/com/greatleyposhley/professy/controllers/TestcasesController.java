@@ -15,7 +15,6 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/testcases")
-@CrossOrigin(origins = "*")
 public class TestcasesController {
 
     private final TestcasesService testcasesService;
@@ -30,8 +29,10 @@ public class TestcasesController {
 
     @GetMapping
     public ResponseEntity<List<Testcases>> getAllTestcases(@RequestParam(required = false) Long projectId,
+                                                           @RequestParam(required = false) List<String> tags,
                                                            Authentication authentication) {
         Long orgId = getOrgId(authentication);
+        if (tags != null && !tags.isEmpty()) return ResponseEntity.ok(testcasesService.filterByTags(orgId, projectId, tags));
         if (projectId != null) {
             return ResponseEntity.ok(testcasesService.getTestcasesByProjectId(orgId,
                     projectId));
@@ -45,6 +46,18 @@ public class TestcasesController {
         Long orgId = getOrgId(authentication);
         return ResponseEntity.ok(testcasesService.getTestcaseById(orgId,
                 id));
+    }
+
+    @GetMapping("/tags")
+    public ResponseEntity<List<String>> tags(@RequestParam(required = false) Long projectId, Authentication authentication) {
+        return ResponseEntity.ok(testcasesService.getTags(getOrgId(authentication), projectId));
+    }
+
+    public record TagsRequest(List<String> tags) {}
+
+    @PutMapping("/{id}/tags")
+    public ResponseEntity<Testcases> updateTags(@PathVariable Long id, @RequestBody TagsRequest request, Authentication authentication) {
+        return ResponseEntity.ok(testcasesService.updateTags(getOrgId(authentication), id, request.tags()));
     }
 
     @PostMapping
