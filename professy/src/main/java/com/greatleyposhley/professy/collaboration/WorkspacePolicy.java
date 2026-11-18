@@ -5,8 +5,6 @@ import com.greatleyposhley.professy.repositories.UserAccountRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import jakarta.annotation.PostConstruct;
@@ -21,7 +19,7 @@ public class WorkspacePolicy {
  public static final List<String> ACTIONS=List.of("READ","CREATE","UPDATE","DELETE");
  public static final Set<String> BASE=Set.of("TICKETS.CREATE","TICKETS.UPDATE","TICKETS.MOVE","RELEASES.CREATE","TESTCASES.CREATE","TESTCASES.UPDATE","DOCUMENTS.CREATE","DOCUMENTS.UPDATE","AGENTS.CREATE","AGENTS.UPDATE","SHEETS.CREATE","SHEETS.UPDATE","SLIDES.CREATE","SLIDES.UPDATE","MEETINGS.CREATE","MEETINGS.UPDATE");
  public WorkspacePolicy(JdbcTemplate jdbc,ObjectMapper json,UserAccountRepository users){this.jdbc=jdbc;this.json=json;this.users=users;}
- @PostConstruct void initialize(){new ResourceDatabasePopulator(new ClassPathResource("db/V20261103__workspace_policy.sql")).execute(Objects.requireNonNull(jdbc.getDataSource()));for(long org:jdbc.queryForList("SELECT DISTINCT org_id FROM user_account",Long.class))seed(org);}
+ @PostConstruct void initialize(){for(long org:jdbc.queryForList("SELECT DISTINCT org_id FROM user_account",Long.class))seed(org);}
  public static List<String> permissions(){var result=new ArrayList<String>();for(var resource:RESOURCES)for(var action:ACTIONS)result.add(resource+"."+action);result.add("TICKETS.MOVE");return result;}
  private static Set<String> grants(String... resources){var values=new LinkedHashSet<String>();for(String resource:resources)for(String action:List.of("CREATE","UPDATE","DELETE"))values.add(resource+"."+action);return values;}
  public void seed(long org){

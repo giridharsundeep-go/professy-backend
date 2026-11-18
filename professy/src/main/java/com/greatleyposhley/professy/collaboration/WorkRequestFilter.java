@@ -14,7 +14,7 @@ import java.io.*;
 import java.util.*;
 import java.util.regex.*;
 
-/** One transaction keeps the authenticated actor and database-trigger events with every write. */
+/** One transaction keeps the authenticated actor and application audit events with every write. */
 public class WorkRequestFilter extends OncePerRequestFilter {
     private final TicketActors actors;private final WorkAccess access;private final TransactionTemplate transactions;private final EntityManager entityManager;private final ObjectMapper json;
     public WorkRequestFilter(WorkAccess access,PlatformTransactionManager manager,EntityManager entityManager,ObjectMapper json,TicketActors actors){this.actors=actors;this.access=access;this.transactions=new TransactionTemplate(manager);this.entityManager=entityManager;this.json=json;}

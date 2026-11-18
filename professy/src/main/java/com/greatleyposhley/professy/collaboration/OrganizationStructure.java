@@ -2,23 +2,12 @@ package com.greatleyposhley.professy.collaboration;
 import com.greatleyposhley.professy.entities.UserAccount;
 import org.springframework.stereotype.Service;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
-import jakarta.annotation.PostConstruct;
 import java.util.*;
 
 @Service
 public class OrganizationStructure {
  private final JdbcTemplate jdbc;
  public OrganizationStructure(JdbcTemplate jdbc){this.jdbc=jdbc;}
- @PostConstruct void migrate(){
-  new ResourceDatabasePopulator(new ClassPathResource("db/V20261103__collaboration_extensions.sql")).execute(Objects.requireNonNull(jdbc.getDataSource()));
-  for(String column:List.of("department_id","function_id","division_id")){
-   if(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='user_account' AND COLUMN_NAME=?",Integer.class,column)==0){
-    try{jdbc.execute("ALTER TABLE user_account ADD COLUMN "+column+" BIGINT NULL");}catch(org.springframework.dao.DataAccessException error){if(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='user_account' AND COLUMN_NAME=?",Integer.class,column)==0)throw error;}
-   }
-  }
- }
  public List<Map<String,Object>> units(long org){return jdbc.queryForList("SELECT id,unit_type AS type,name,parent_id AS parentId,active FROM organization_units WHERE org_id=? ORDER BY unit_type,name",org);}
  public void validate(UserAccount user){check(user.getOrgId(),"DEPARTMENT",user.getDepartmentId());check(user.getOrgId(),"FUNCTION",user.getFunctionId());check(user.getOrgId(),"DIVISION",user.getDivisionId());}
  public void validateChanges(UserAccount user,UserAccount previous){

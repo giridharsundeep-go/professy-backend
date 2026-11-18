@@ -14,6 +14,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
+@jakarta.persistence.EntityListeners(com.greatleyposhley.professy.collaboration.TicketAuditEntityListener.class)
 @Entity
 @Table(name = "stories")
 public class Stories {

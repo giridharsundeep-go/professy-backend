@@ -1,6 +1,7 @@
 package com.greatleyposhley.professy.services;
 
 import com.greatleyposhley.professy.entities.*;
+import com.greatleyposhley.professy.collaboration.TicketAuditService;
 import com.greatleyposhley.professy.repositories.*;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +27,7 @@ public class TestcasesService {
     private final UserAccountRepository usersRepository;
     private final TestSuitesRepository testSuitesRepository;
     private final IssuesRepository issuesRepository;
+    private final TicketAuditService ticketAudit;
 
 
     @Autowired
@@ -36,7 +38,8 @@ public class TestcasesService {
                             TasksRepository tasksRepository,
                             UserAccountRepository usersRepository,
                             TestSuitesRepository testSuitesRepository,
-                            IssuesRepository issuesRepository) {
+                            IssuesRepository issuesRepository,
+                            TicketAuditService ticketAudit) {
         this.testcasesRepository = testcasesRepository;
         this.projectsRepository = projectsRepository;
         this.epicsRepository = epicsRepository;
@@ -45,6 +48,7 @@ public class TestcasesService {
         this.usersRepository = usersRepository;
         this.testSuitesRepository = testSuitesRepository;
         this.issuesRepository = issuesRepository;
+        this.ticketAudit = ticketAudit;
     }
 
     @Transactional(readOnly = true)
@@ -82,6 +86,7 @@ public class TestcasesService {
                                     "Test case not found: " + testcase.getId()
                             )
                     );
+            Set<String> beforeTags = new LinkedHashSet<>(existing.getTags());
 
             /*
              * --------------------------------------------------------
@@ -263,7 +268,9 @@ public class TestcasesService {
              * Save existing entity
              * --------------------------------------------------------
              */
-            return testcasesRepository.save(existing);
+            Testcases saved = testcasesRepository.save(existing);
+            if (testcase.isTagsProvided()) ticketAudit.recordTags(saved, beforeTags, new LinkedHashSet<>(saved.getTags()));
+            return saved;
         }
 
 
@@ -404,7 +411,9 @@ public class TestcasesService {
         }
 
 
-        return testcasesRepository.save(testcase);
+        Testcases saved = testcasesRepository.save(testcase);
+        if (!saved.getTags().isEmpty()) ticketAudit.recordTags(saved, Set.of(), new LinkedHashSet<>(saved.getTags()));
+        return saved;
     }
 
     @Transactional
@@ -497,8 +506,11 @@ public class TestcasesService {
     @Transactional
     public Testcases updateTags(Long orgId, Long id, Collection<String> tags) {
         Testcases testcase = getTestcaseById(orgId, id);
+        Set<String> before = new LinkedHashSet<>(testcase.getTags());
         testcase.setTags(normalizeTags(tags));
-        return testcasesRepository.save(testcase);
+        Testcases saved = testcasesRepository.save(testcase);
+        ticketAudit.recordTags(saved, before, new LinkedHashSet<>(saved.getTags()));
+        return saved;
     }
 
     static Set<String> normalizeTags(Collection<String> values) {

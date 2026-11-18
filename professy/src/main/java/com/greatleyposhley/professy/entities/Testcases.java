@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
+@jakarta.persistence.EntityListeners(com.greatleyposhley.professy.collaboration.TicketAuditEntityListener.class)
 @Entity
 @Table(name = "testcases")
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})

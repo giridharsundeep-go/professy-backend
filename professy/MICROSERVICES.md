@@ -75,7 +75,7 @@ For another environment supply `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `CORE_API
 
 ## Delivery guarantees and operations
 
-Ticket table triggers record changes and an outbox event in the same database transaction. The request filter supplies the authenticated actor and flushes JPA before clearing that context. SQL changes outside authenticated requests appear as System activity. Inserts, meaningful field updates, deletes, tag changes, comments, and attachments are recorded.
+JPA lifecycle listeners and application services record ticket changes and a transactional outbox event. The request filter supplies the authenticated actor and flushes JPA before clearing that context. SQL changes outside authenticated requests appear as System activity. Inserts, meaningful field updates, deletes, tag changes, comments, and attachments are recorded in Java.
 
 The publisher locks pending rows with `FOR UPDATE SKIP LOCKED`, waits for Kafka acknowledgements, marks published only afterwards, and retries with backoff. A crash after publishing can produce a duplicate. Notification inserts have a unique `(event_id,user_id)` key; mail ingestion has an `event_id` primary key. Consumers commit offsets only after handling succeeds. Repeatedly failing Kafka messages go to the corresponding `.dlt` topic after bounded retries. Alert on nonempty DLT topics and old unpublished outbox rows. Resolve the cause before deliberately replaying selected DLT records to their source topic with the same event ID.
 
@@ -106,7 +106,7 @@ Approved permissions are enforced by the backend: `SUPER_USER` manages organizat
 
 ## Database changes
 
-Additive migrations are in `src/main/resources/db/V20261103__*.sql` and recorded in `workspace_schema_migrations`. They are already applied locally, including 17 ticket/tag triggers, the audit procedure, collaboration tables, credential version, password setup state, and mail-event metadata. The two service schemas are installed locally from each project's `schema.sql`. Existing ticket/test-case records were preserved. Legacy test-plan/suite tables remain intact, but the UI no longer uses them.
+The core service table mappings live in `com.greatleyposhley.professy.entities`; Hibernate creates and updates those tables from the single `application.properties` configuration (`spring.jpa.hibernate.ddl-auto=update`). Ticket history, tag events, document revisions, and the ticket outbox are maintained by application code. JPA manages tables inside the database named in `DB_URL`; create that database once before the service starts. `update` adds or adjusts mapped tables and columns, but does not create the database itself or remove unrelated tables. Existing ticket/test-case rows are kept.
 
 ## Scaling boundary
 

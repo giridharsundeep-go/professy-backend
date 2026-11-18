@@ -42,7 +42,7 @@ public class SupportDesk {
   String note=text(body.get("note"),12000);if(Set.of("RESOLVED","CLOSED").contains(state)&&note.isBlank())throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Add a resolution before resolving or closing a request");
   access().jdbc.update("UPDATE delivery_support SET state=?,updated_at=CURRENT_TIMESTAMP(6) WHERE id=? AND org_id=?",state,id,org());
   access().jdbc.update("INSERT INTO delivery_support_details(case_id,category,resolution) VALUES(?,'INCIDENT',?) ON DUPLICATE KEY UPDATE resolution=VALUES(resolution)",id,note);
-  access().jdbc.update("UPDATE issues SET status=? WHERE id=? AND org_id=?",Set.of("RESOLVED","CLOSED").contains(state)?"COMPLETED":state.equals("IN_PROGRESS")?"IN_PROGRESS":"TODO",value.get("issue_id"),org());
+  var issueBefore=access().ticket("ISSUE",number(value.get("issue_id")),false);String issueState=Set.of("RESOLVED","CLOSED").contains(state)?"COMPLETED":state.equals("IN_PROGRESS")?"IN_PROGRESS":"TODO";access().jdbc.update("UPDATE issues SET status=? WHERE id=? AND org_id=?",issueState,value.get("issue_id"),org());access().recordTicketChange("ISSUE",number(value.get("issue_id")),"STATUS_CHANGED",Map.of("title",issueBefore.get("title"),"status",issueBefore.get("status")),Map.of("title",issueBefore.get("title"),"status",issueState));
   event(id,"STATUS",value.get("state")+" → "+state+(note.isBlank()?"":"\n"+note));return detail(id);
  }
  @PostMapping("/cases/{id}/ownership") @Transactional public Object ownership(@PathVariable long id){operations.takeOwnership(id);event(id,"OWNERSHIP","Human ownership accepted");return detail(id);}

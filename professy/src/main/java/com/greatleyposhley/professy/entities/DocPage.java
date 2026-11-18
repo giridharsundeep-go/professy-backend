@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+@jakarta.persistence.EntityListeners(com.greatleyposhley.professy.collaboration.DocumentLifecycleListener.class)
 @Entity
 @Table(name = "doc_pages")
 

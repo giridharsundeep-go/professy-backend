@@ -21,7 +21,8 @@ public class TicketCollaborationService {
     private final Path storage;
     private final TicketActors ticketActors;
     private final WorkspaceAgents agents;
-    public TicketCollaborationService(WorkAccess access,ObjectMapper json,@Value("${app.attachments.directory:./.runtime/attachments}") String path,TicketActors ticketActors,WorkspaceAgents agents){this.access=access;this.json=json;this.storage=Path.of(path).toAbsolutePath().normalize();this.ticketActors=ticketActors;this.agents=agents;}
+    private final TicketAuditService audit;
+    public TicketCollaborationService(WorkAccess access,ObjectMapper json,@Value("${app.attachments.directory:./.runtime/attachments}") String path,TicketActors ticketActors,WorkspaceAgents agents,TicketAuditService audit){this.access=access;this.json=json;this.storage=Path.of(path).toAbsolutePath().normalize();this.ticketActors=ticketActors;this.agents=agents;this.audit=audit;}
     public List<Map<String,Object>> activity(String kind,long id,long before){access.ticket(kind,id,false);return access.jdbc.queryForList("SELECT a.*,CONCAT_WS(' ',u.first_name,u.last_name) AS actorName FROM ticket_activity a LEFT JOIN user_account u ON u.id=a.actor_id WHERE a.org_id=? AND a.ticket_type=? AND a.ticket_id=? AND (?=0 OR a.id<?) ORDER BY a.id DESC LIMIT 50",access.actor().getOrgId(),access.kind(kind),id,before,before).stream().map(row->{row.put("changes",json.readValue(row.remove("changes_json").toString(),Map.class));var changes=(Map<?,?>)row.get("changes");Object after=changes.get("after");if(after instanceof Map<?,?> detail&&"AGENT".equals(detail.get("actorType"))){row.put("actorType","AGENT");row.put("actorName",detail.get("agentName"));}return row;}).toList();}
     public Map<String,Object> context(String type,long id){
         String kind=access.kind(type);var row=access.ticket(kind,id,false);var actor=access.actor();
@@ -32,7 +33,7 @@ public class TicketCollaborationService {
         return Map.of("projectId",number(row.get("work_project_id")),"permissions",Map.of("canEdit",access.canEdit(actor,row),"canComment",true,"canAttach",true),"comments",comments,"attachments",files,"activity",activity(kind,id,0),"currentUserId",actor.getId(),"watching",access.jdbc.queryForObject("SELECT COUNT(*) FROM ticket_watchers WHERE org_id=? AND ticket_type=? AND ticket_id=? AND user_id=?",Integer.class,actor.getOrgId(),kind,id,actor.getId())>0);
     }
     @Transactional
-    public void record(String kind,long id,String action,Object before,Object after){var row=access.ticket(kind,id,false);access.jdbc.update("CALL workspace_record_ticket_change(?,?,?,?,?,?,?,?)",access.actor().getOrgId(),number(row.get("work_project_id")),access.kind(kind),id,access.actor().getId(),action,json.writeValueAsString(before),json.writeValueAsString(after));}
+    public void record(String kind,long id,String action,Object before,Object after){var row=access.ticket(kind,id,false);audit.recordManual(access.kind(kind),id,access.actor().getOrgId(),number(row.get("work_project_id")),access.actor().getId(),action,before,after,row);}
     @Transactional
     public long addComment(String kind,long id,String content){
         var row=access.ticket(kind,id,false);String text=content==null?"":content.trim();if(text.isEmpty()||text.length()>20000)throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Write a comment of 1–20,000 characters");
@@ -64,7 +65,10 @@ public class TicketCollaborationService {
     @Transactional public void place(String type,long id,Map<String,Object> body){
         var kind=access.kind(type);var row=access.ticket(kind,id,false);access.require("TICKETS.MOVE");
         if(!body.containsKey("status")&&!body.containsKey("sprintId"))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Choose a status or sprint");
-        placeWork(sprintWorkTable(kind), id, access.actor().getOrgId(), row, body);
+        String table=sprintWorkTable(kind);var before=new LinkedHashMap<String,Object>();before.put("title",Objects.toString(row.get("title"),Objects.toString(row.get("name"),kind+"-"+id)));before.put("status",row.get("status"));before.put("sprintId",row.get("sprint_id"));
+        placeWork(table, id, access.actor().getOrgId(), row, body);
+        var updated=access.jdbc.queryForMap("SELECT status,sprint_id FROM "+table+" WHERE id=? AND org_id=?",id,access.actor().getOrgId());var after=new LinkedHashMap<String,Object>();after.put("title",before.get("title"));after.put("status",updated.get("status"));after.put("sprintId",updated.get("sprint_id"));
+        if(!before.equals(after))record(kind,id,"UPDATED",before,after);
     }
 
     @Transactional public void assignUnassigned(String type, long id, Map<String,Object> body) {

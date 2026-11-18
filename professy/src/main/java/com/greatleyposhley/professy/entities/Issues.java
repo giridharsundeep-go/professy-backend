@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+@jakarta.persistence.EntityListeners(com.greatleyposhley.professy.collaboration.TicketAuditEntityListener.class)
 @Entity
 @Table(name = "issues")
 public class Issues {

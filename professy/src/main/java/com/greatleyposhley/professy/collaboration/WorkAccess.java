@@ -12,8 +12,9 @@ import java.util.*;
 @Service
 public class WorkAccess {
     private final UserAccountRepository users;
+    private final TicketAuditService ticketAudit;
     public final JdbcTemplate jdbc;public final WorkspacePolicy policy;
-    public WorkAccess(UserAccountRepository users, JdbcTemplate jdbc,WorkspacePolicy policy) { this.users=users;this.jdbc=jdbc;this.policy=policy; }
+    public WorkAccess(UserAccountRepository users, JdbcTemplate jdbc,WorkspacePolicy policy,TicketAuditService ticketAudit) { this.users=users;this.jdbc=jdbc;this.policy=policy;this.ticketAudit=ticketAudit; }
     public UserAccount actor() {
         var authentication=SecurityContextHolder.getContext().getAuthentication();
         if(authentication==null || !authentication.isAuthenticated()) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Sign in to continue");
@@ -41,6 +42,10 @@ public class WorkAccess {
         var user=actor();
         if(edit&&!canEdit(user,row))throw new ResponseStatusException(HttpStatus.FORBIDDEN,"You do not have permission to edit this ticket");
         return row;
+    }
+    public void recordTicketChange(String kind,long id,String action,Object before,Object after) {
+        var ticket=ticket(kind,id,false);var user=actor();
+        ticketAudit.recordManual(kind(kind),id,user.getOrgId(),number(ticket.get("work_project_id")),user.getId(),action,before,after,ticket);
     }
     public boolean canEdit(UserAccount user,Map<String,Object> row) {
         return policy.can(user,row.containsKey("test_case_code")?"TESTCASES.UPDATE":"TICKETS.UPDATE");

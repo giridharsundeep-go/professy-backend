@@ -3,6 +3,7 @@ package com.greatleyposhley.professy.entities;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+@jakarta.persistence.EntityListeners(com.greatleyposhley.professy.collaboration.TicketAuditEntityListener.class)
 @Entity
 @Table(name = "tasks")
 public class Tasks {
