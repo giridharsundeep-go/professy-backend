@@ -1,5 +1,6 @@
 FROM eclipse-temurin:26-jdk-noble AS build
 WORKDIR /workspace
+ARG INSTRU_MAVEN_URL
 COPY . .
 RUN chmod +x gradlew && ./gradlew --no-daemon bootJar -x test \
     && find build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*-plain.jar' -exec cp {} /tmp/service.jar \; \

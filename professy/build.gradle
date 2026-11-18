@@ -14,11 +14,19 @@ java {
 }
 
 repositories {
-	    maven {
-        url = uri(System.getenv('INSTRU_MAVEN_URL') ?: 'http://127.0.0.1:8094/maven/')
-        allowInsecureProtocol = true
+    mavenCentral()
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = 'Radar'
+                url = uri(System.getenv('INSTRU_MAVEN_URL') ?: 'http://127.0.0.1:8094/maven/')
+                allowInsecureProtocol = url.scheme == 'http'
+            }
+        }
+        filter {
+            includeGroup 'com.greatleyposhley.instru'
+        }
     }
-mavenCentral()
 }
 
 dependencies {
